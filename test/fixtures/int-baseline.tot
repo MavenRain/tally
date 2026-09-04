@@ -1,0 +1,2 @@
+def five : Int := intAdd 2 3
+def rendered : String := intToString five

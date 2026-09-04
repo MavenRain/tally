@@ -1,0 +1,1 @@
+def addComputes : Eq Int (intAdd 2 3) 5 := refl Int 5

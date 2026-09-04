@@ -1,0 +1,7 @@
+I	sbpf|\bsbf\b|opcode|\belf\b|relocat|linker
+S	Cterm|cterm|defunctionali
+S	MAX_INSTRUCTION|200000|200_000|32768|262144|stack_height|SIMD-?0268|(?i:stack.?depth|max.?depth)|\b4096\b|\b1232\b
+I	account|\bcpi\b|\bpda\b|signer|lamport|stack_height
+S	Quantity\.One|usage.vector
+I	compute.unit|\bcu\b.*budget|certificate
+S	natOfU64|u64OfNat|intOfU64|u64OfInt
