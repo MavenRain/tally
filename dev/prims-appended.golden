@@ -1,0 +1,92 @@
+u8Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+i8Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+u16Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+i16Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+u32Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+i32Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+u64Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+i64Add  2  Tot  machine-word addition is masked Int64 work, modulo 2^W and total
+u8Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+i8Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+u16Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+i16Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+u32Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+i32Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+u64Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+i64Sub  2  Tot  machine-word subtraction is masked Int64 work, modulo 2^W and total
+u8Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+i8Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+u16Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+i16Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+u32Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+i32Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+u64Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+i64Mul  2  Tot  machine-word multiplication is masked Int64 work, modulo 2^W and total
+u8And  2  Tot  bitwise and on a masked Int64 pattern is total
+i8And  2  Tot  bitwise and on a masked Int64 pattern is total
+u16And  2  Tot  bitwise and on a masked Int64 pattern is total
+i16And  2  Tot  bitwise and on a masked Int64 pattern is total
+u32And  2  Tot  bitwise and on a masked Int64 pattern is total
+i32And  2  Tot  bitwise and on a masked Int64 pattern is total
+u64And  2  Tot  bitwise and on a masked Int64 pattern is total
+i64And  2  Tot  bitwise and on a masked Int64 pattern is total
+u8Or  2  Tot  bitwise or on a masked Int64 pattern is total
+i8Or  2  Tot  bitwise or on a masked Int64 pattern is total
+u16Or  2  Tot  bitwise or on a masked Int64 pattern is total
+i16Or  2  Tot  bitwise or on a masked Int64 pattern is total
+u32Or  2  Tot  bitwise or on a masked Int64 pattern is total
+i32Or  2  Tot  bitwise or on a masked Int64 pattern is total
+u64Or  2  Tot  bitwise or on a masked Int64 pattern is total
+i64Or  2  Tot  bitwise or on a masked Int64 pattern is total
+u8Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+i8Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+u16Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+i16Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+u32Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+i32Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+u64Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+i64Xor  2  Tot  bitwise exclusive or on a masked Int64 pattern is total
+u8Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+i8Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+u16Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+i16Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+u32Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+i32Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+u64Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+i64Not  1  Tot  bitwise complement, re-masked to the family's width, is total
+u8Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+i8Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+u16Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+i16Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+u32Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+i32Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+u64Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+i64Shl  2  Tot  the left shift tests its amount against the family's width first, so it never reaches an unspecified stdlib shift and returns 0 above the width
+u8Eq  2  Tot  bit-pattern equality at a fixed width is total
+i8Eq  2  Tot  bit-pattern equality at a fixed width is total
+u16Eq  2  Tot  bit-pattern equality at a fixed width is total
+i16Eq  2  Tot  bit-pattern equality at a fixed width is total
+u32Eq  2  Tot  bit-pattern equality at a fixed width is total
+i32Eq  2  Tot  bit-pattern equality at a fixed width is total
+u64Eq  2  Tot  bit-pattern equality at a fixed width is total
+i64Eq  2  Tot  bit-pattern equality at a fixed width is total
+u8Div  2  Tot  unsigned division tests the divisor first and is defined-total at zero (x / 0 = 0), so no body can raise
+u16Div  2  Tot  unsigned division tests the divisor first and is defined-total at zero (x / 0 = 0), so no body can raise
+u32Div  2  Tot  unsigned division tests the divisor first and is defined-total at zero (x / 0 = 0), so no body can raise
+u64Div  2  Tot  unsigned division tests the divisor first and is defined-total at zero (x / 0 = 0), so no body can raise
+u8Mod  2  Tot  unsigned remainder tests the divisor first and is defined-total at zero (x mod 0 = x), so no body can raise
+u16Mod  2  Tot  unsigned remainder tests the divisor first and is defined-total at zero (x mod 0 = x), so no body can raise
+u32Mod  2  Tot  unsigned remainder tests the divisor first and is defined-total at zero (x mod 0 = x), so no body can raise
+u64Mod  2  Tot  unsigned remainder tests the divisor first and is defined-total at zero (x mod 0 = x), so no body can raise
+u8Shr  2  Tot  the logical right shift tests its amount against the family's width first, the same guard the left shift carries
+u16Shr  2  Tot  the logical right shift tests its amount against the family's width first, the same guard the left shift carries
+u32Shr  2  Tot  the logical right shift tests its amount against the family's width first, the same guard the left shift carries
+u64Shr  2  Tot  the logical right shift tests its amount against the family's width first, the same guard the left shift carries
+u8Compare  2  Tot  three-way unsigned comparison of two fixed-width patterns is total
+u16Compare  2  Tot  three-way unsigned comparison of two fixed-width patterns is total
+u32Compare  2  Tot  three-way unsigned comparison of two fixed-width patterns is total
+u64Compare  2  Tot  three-way unsigned comparison of two fixed-width patterns is total
+u8ToString  1  Tot  unsigned decimal rendering of a fixed-width pattern is total
+u16ToString  1  Tot  unsigned decimal rendering of a fixed-width pattern is total
+u32ToString  1  Tot  unsigned decimal rendering of a fixed-width pattern is total
+u64ToString  1  Tot  unsigned decimal rendering of a fixed-width pattern is total

@@ -1,0 +1,11 @@
+/Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot:178:-- (u64Div x 0u64 = 0u64), so the ergonomic checked form is an ordinary
+/Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot:182:  fun a b => match u64Eq b 0u64 as x return Option U64 with | true => none U64 | false => some U64 (u64Div a b) end
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:897:  m0word_token_descriptions "5u8 255i8 18446744073709551615u64 5 007u16 0u32"
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:902:                "word literal 5u8";
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:903:                "word literal 255i8";
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:904:                "word literal 18446744073709551615u64";
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:906:                "word literal 7u16";
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:907:                "word literal 0u32";
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:920:    let* u8 = m0word_lex_error "def x : U8 := 256u8" in
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:921:    let* i8 = m0word_lex_error "def x : I8 := 256i8" in
+/Users/oobi/Documents/tally/vendor/tot/test/surface.ml:922:    let* u64 = m0word_lex_error "def x : U64 := 18446744073709551616u64" in
