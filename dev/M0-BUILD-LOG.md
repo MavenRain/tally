@@ -279,3 +279,266 @@ equality itself was verified here with `cmp` against a temp file, exit 0.
 Entry 18 is an `exit 9` placeholder until E4, so nothing at Stage B
 depends on it;  recorded so E4 either runs unsandboxed or spells the leg
 with a temp file.
+
+## Stage C part 1: the carve (pre-commit)
+
+All edits are inside `vendor/tot`, on top of PIN_M5
+`66b444fe8380c82f0a74093ffaa779371d014a9b`, staged with
+`git -C vendor/tot add -A` and NOT committed by the builder.
+
+**No gate evidence is claimed by this section.**  Every run below is a
+PRE-COMMIT SMOKE run of a gate SHAPE, not the gate.  PASS-T0-KERNEL-SPLIT
+and every Stage C mutation cycle need the split COMMITTED in the
+submodule first (M0-PLAN.md 1804-1827, R15, F119: a HEAD-form
+`git checkout HEAD -- <file>` restore against an uncommitted split
+silently reverts the file to PIN bytes).  Part 2 runs the five-leg gate,
+the 12 cycles, `gates-tally.sh` entry 4 and `dev/inst-key-enc.golden`.
+
+### The carve, one row per `dev/split-manifest.txt` row
+
+`git -C vendor/tot diff --numstat -M "$(cat PIN)"`, staged tree:
+
+| # | status | file | what changed | numstat |
+|---|---|---|---|---|
+| 1 | A | `interp/dune` | NEW.  The `str` comment block moved here from `lib/dune` with BOTH `lib/interp.ml` mentions retargeted to `interp/interp.ml`, then `(library (name tot_interp) (public_name tot.interp) (libraries tot_kernel str))` | 8 0 |
+| 2 | A | `test/keygolden/dune` | NEW: `(executable (name keygolden) (libraries tot_kernel))`, its own directory so `test/dune`'s `(tests (names main surface))` auto-glob needs no `(modules ...)` surgery | 3 0 |
+| 3 | A | `test/keygolden/keygolden.ml` | NEW, 15 lines: file-level `open Tot_kernel`, a fixed four-element `Term.t list` (`Lit (LString "tally")`, `Lit (LInt 42)`, and two structural terms, an `App` over a `Global` and a `Lam` over an `App`), printed one row per line through `Check.inst_key_enc`.  Never prints `PASS` | 15 0 |
+| 4 | M | `dune-project` | appended `(package (name tot))` as the last line (R9, F88: without a declared package dune 3.24 resolves no `public_name`) | 1 0 |
+| 5 | M | `lib/dune` | the four-line `str` comment LEFT for `interp/dune`;  a new comment records "the kernel names no external library;  adding one is a gate failure";  stanza is now `(library (name tot_kernel) (public_name tot.kernel))`, with `(libraries str)` dropped | 5 5 |
+| 6 | M | `surface/bootstrap.ml` | ONE added line `open Tot_interp` after `open Tot_kernel` (line 14) | 1 0 |
+| 7 | M | `surface/cache.ml` | ONE added line `open Tot_interp` after `open Tot_kernel` (line 78) | 1 0 |
+| 8 | M | `surface/dune` | `(public_name tot.surface)` added and `tot_interp` added to the library list | 2 1 |
+| 9 | M | `surface/effect.ml` | ONE added line `open Tot_interp` after `open Tot_kernel` (line 13) | 1 0 |
+| 10 | M | `surface/run.ml` | ONE added line `open Tot_interp` after `open Tot_kernel` (line 6) | 1 0 |
+| 11 | M | `test/dune` | ONLY the `tests` stanza's library line changed, to `tot_kernel tot_interp tot_surface unix`;  the `tot_exe_dep.ml` rule stanza and every comment are byte-identical (numstat proves it: one line in, one line out) | 1 1 |
+| 12 | M | `test/main.ml` | ONE added line `open Tot_interp` after `open Tot_kernel` (line 5) | 1 0 |
+| 13 | M | `test/surface.ml` | ONE added FILE-LEVEL line `open Tot_interp` at line 1;  the five scoped `let open Tot_kernel in` sites (602, 630, 1330, 1432, 1526 at PIN_M5) are untouched | 1 0 |
+| 14 | R | `lib/interp.ml` -> `interp/interp.ml` | `git mv` (rename score R099) plus ONE added line `open Tot_kernel` at the top | 1 0 |
+| 15 | R | `lib/json_escape.ml` -> `interp/json_escape.ml` | `git mv` only (rename score R100).  Byte-identical | 0 0 |
+
+`bin/dune` is UNCHANGED, as M0-PLAN.md 1359-1361 predicts: the build is
+green without it, so the plan's sanctioned correction was not needed and
+no sixteenth manifest row exists.
+
+### C3(c) triage: `lib/json_escape.ml` needs no `open Tot_kernel`
+
+`rg -n 'Pp\.'` on the file returns exactly two hits, its line 1 and its
+line 5, and BOTH sit inside the file's leading `(** ... *)` doc comment
+(the comment opens on line 1 and the file's first code line is its
+`let` below it).  A module-reference sweep over the whole file finds only
+stdlib names in code: `Buffer`, `String`, `Printf`, `Char`.  The moved
+file therefore names no `tot_kernel` module at all, an `open Tot_kernel`
+in it would be an UNUSED open (the file names no tot_kernel module in
+code, so the open would be superfluous; note that warning 33 is not
+enabled here, so the zero-warning leg does not detect it), and the file
+moves byte-identical exactly as the
+Stage B manifest row records.  No deviation is raised: the D14 slot the
+brief reserved for a code-`Pp.` outcome is not used.
+
+### Pre-commit smoke runs (shapes only, evidence for part 2 to re-run)
+
+| shape | command | result | artifact |
+|---|---|---|---|
+| manifest, leg e form | `git diff --name-status -M PIN \| sd '^R[0-9]+\t' 'R\t' \| sort` vs `dev/split-manifest.txt` | `diff` EMPTY, all 15 rows match | `tally-m0/scratch/stage-c-build/split-files.txt`, `01-carve.out` |
+| build | `dunecho build -- --root vendor/tot` | `OK build: 0 errors, 0 warnings` | `scratch/stage-c-build/build.out`, `02-build-legs.out` |
+| leg b form | untracked-clean, then `diff --numstat -M PIN -- lib/ \| rg -v 'interp\.ml\|json_escape\.ml\|dune' \| wc -l` | untracked-clean;  residue rows = 0 | `scratch/stage-c-build/02-build-legs.out` |
+| leg d form | `rg -c 'libraries' vendor/tot/lib/dune` | exit 1 (no match), the exact "file exists, names no external library" status | `scratch/stage-c-build/02-build-legs.out` |
+| retarget | `rg -n 'lib/interp\.ml' interp/dune lib/dune` | exit 1 (zero hits) | `scratch/stage-c-build/02-build-legs.out` |
+| leg a form | `zsh vendor/tot/dev/gates.sh` | `GATE-EXIT=0` (attributed to `03-smoke-lega.out`, the wrapper's own capture; the token does not appear inside `split-gate.smoke.out`, which is gates.sh's redirected stdout), `rg -c '^FAIL'` exit 1, `rg -c '^PASS'` = 371 = `pass-count.txt` | `scratch/stage-c-build/split-gate.smoke.out`, `03-smoke-lega.out` |
+| leg c floors | `zsh dev/gates-stage-c.sh "$OUT/base1"` | exit 0 and the `PASS-T0-SPLIT-FLOORS` marker present | `scratch/stage-c-build/floors-c.smoke.txt` |
+| leg c behaviour | `zsh dev/run-matrix.sh "$WBIN" vendor/tot "$OUT/cand-smoke"` then `diff -r "$OUT/base1" "$OUT/cand-smoke"` | 405 capture dirs, `diff -r` output 0 bytes, exit census identical to base1 (130 x 0, 272 x 1, 2 x 2, 1 x 124) | `scratch/stage-c-build/behavior.smoke.diff`, `census-base1.txt`, `census-cand-smoke.txt` |
+| keygolden | `vendor/tot/_build/default/test/keygolden/keygolden.exe` run DIRECTLY | exit 0, exactly 4 rows, `rg -c '^PASS'` exit 1, two runs byte-equal | `scratch/stage-c-build/keygolden.smoke.out` |
+
+The four smoke rows are `S5:tally`, `I42;`, `AwG3:BoxI7;` and
+`Lw1:xA0V0;G4:unit`.  They are NOT frozen here: `dev/inst-key-enc.golden`
+is a part-2 artifact.
+
+`$OUT/base1` and `$OUT/base2` were never written to;  the smoke candidate
+cut went to `$OUT/cand-smoke`, so the close run's `$OUT/cand` is still
+absent and `run-matrix.sh` will create it there.
+
+### Standing adds
+
+`git -C vendor/tot add -A` ran (standing add 1) and leaves the
+submodule's index carrying every carve row.  `git -C tally add vendor/tot`
+ran (standing add 2) and is a NO-OP until the user commits: the gitlink
+still records `66b444fe8380c82f0a74093ffaa779371d014a9b`, which equals
+`PIN` and equals the submodule HEAD.  The tally-side staged set for part 1
+is `dev/M0-BUILD-LOG.md` alone.
+
+### Deviations
+
+None.  D13 remains the last deviation;  the D14 slot reserved for a
+code-level `Pp.` reference in `lib/json_escape.ml` is not used, per the
+triage above.
+
+Build-runner note (not a deviation): the first execution of
+`scratch/stage-c-build/01-carve.sh` died inside its line-insert helper on
+BSD `head -n 0` AFTER both `git mv` calls had landed.  The helper was
+given a zero-line branch, the two moves were made re-entrant with
+`test -f` guards, and the runner was re-run to completion;  the carve was
+never backed out and no `git checkout` restore was used.
+
+### Artifact observation (not a gate): `dunecho build` drops a `_build/` in the tally root
+
+Measured in part 1, three probes at
+`tally-m0/scratch/stage-c-build/07-buildartifact-probe.out` and
+`08-artifact-origin-cleanup.out`:
+
+- After the leg-a smoke run, `git -C tally status --porcelain` carried a
+  new `?? _build/`, absent at entry.
+- `dunecho build -- --root /Users/oobi/Documents/tally/vendor/tot` does
+  NOT create it.  A BARE `dunecho build` with cwd = `vendor/tot`, which
+  is what `dev/gates.sh:12` runs after it `cd`s to its own `ROOT`, DOES
+  create it, every time.
+- The directory holds only dune's own root metadata (`.digest-db`,
+  `.filesystem-clock`, `.lock`, `trace.csexp`) and no build context;  the
+  real output tree stays at `vendor/tot/_build`.  The walk is unaffected:
+  the same run reported 371 PASS and 0 FAIL.
+
+It was deleted, so the tally worktree matches its entry state apart from
+the staged `dev/M0-BUILD-LOG.md` and the (expected) dirty gitlink.  It
+WILL come back on the next `dev/gates.sh` run, which is Stage C part 2's
+leg a.  Part 1 raises it rather than fixing it: a `.gitignore` row is a
+tally-repo edit no plan block or manifest row authorizes, and the tally
+repo has no `.gitignore` at all today.  USER decision needed before any
+tally-side untracked-clean leg is written.
+
+## Stage C close (part 2): the five-leg gate, entry 4, the golden
+
+Result: GREEN.  The kernel split is committed in the submodule as
+`29c5b74e0df5d2aa620281057934b8310d345f90`, subject `M0 Stage C: kernel
+split`, first parent `66b444fe8380c82f0a74093ffaa779371d014a9b` (`PIN`).
+The `PIN` file is unchanged;  M0 never advances it.  The gitlink staged in
+tally now records the new submodule HEAD.
+
+### What ran green
+
+The close block ran twice.  The first run is the close, the second run is
+the stage-close evidence after the twelfth mutation cycle.
+
+| run | file | result |
+|---|---|---|
+| close | `tally-m0/scratch/stage-c-close/01-close.out` | `PASS-T0-BUILD-LEG1`, `PASS-T0-PIN`, `PASS-T0-BASELINE`, `PASS-T0-KERNEL-SPLIT-A` to `-E`, `GATE-EXIT 0`, 121 s wall |
+| final | `tally-m0/scratch/stage-c-close/13-final-close.out` | the same 8 markers, `GATE-EXIT 0`, 144 s wall, started 06:00:55Z after the last cycle closed green at 06:00:37Z |
+
+Leg evidence, all re-read on disk at the close of this section:
+
+| leg | evidence | reading |
+|---|---|---|
+| build leg 1 | `01-close.out`, `13-final-close.out` | `OK build: 0 errors, 0 warnings` |
+| a | `tally-m0/gate-out/split-gate.out` | `rg -c '^PASS'` = 371 = `pass-count.txt`, `rg -c '^FAIL'` exit 1, `GATE-EXIT=0` |
+| b | `tally-m0/gate-out/split-files.txt`, `scratch/stage-c-close/rows/04-red.out` and `04-green.out` | untracked-clean, filtered `--numstat` residue rows (FILTERED-ROW-COUNT 1 then 0) |
+| c | `tally-m0/gate-out/behavior.diff` | 0 bytes;  `cand` 405 dirs, `base1` 405, `base2` 405, `diff -r base1 base2` empty, floors marker `PASS-T0-SPLIT-FLOORS` |
+| d | `scratch/stage-c-close/rows/11-red.out` and `11-green.out` | RG-EXIT-BEFORE 1, LEG-D-EXIT 1 then 0 |
+| e | `tally-m0/gate-out/split-files.txt`, `scratch/stage-c-close/rows/12-red.out` and `12-green.out` | SPLIT-FILES-ROWS 16 then 15 against MANIFEST-ROWS 15 |
+
+The 12 mutation cycles are in `dev/MUTATION-LOG.md` (stage `C`), one row
+each, with the red and the green quoted from
+`tally-m0/scratch/stage-c-close/rows/`.  Every cycle restored to porcelain
+empty.  State at this section: `vendor/tot` porcelain 0 lines, `base1` ==
+`base2` (`diff -r` 0 bytes), tally HEAD `9b6fbe9`.  The vendor binary mtime
+(22:59:20) precedes the last two source restores (lib/dune 23:00:35,
+bin/tot.ml 23:00:36).  Rows 11 and 12 redden on `rg` and on `git diff`,
+never on a build, and both restores put back byte-identical content, so
+dune skipped the relink; a later full rebuild left the exe sha unchanged.
+
+### The standalone runner (D12 precedent, no new number)
+
+The close ran as a standalone zsh runner
+(`tally-m0/scratch/stage-c-close/01-close.sh`), with no `dev/gates-tally.sh`
+prefix run.  The shape is D12's, and its prologue is copied from Stage B's
+`scratch/stage-b-build/13-stage-b-gates.sh`.  D12's reason holds unchanged:
+section 7's battery is fail-fast from entry 0, and entries 3 and 5 to 19
+are still `exit 9` placeholders.  No new deviation number is taken.
+
+### `gates-tally.sh` entry 4
+
+The entry-4 `exit 9` placeholder is replaced by leg d's three plan lines
+(M0-PLAN.md 1723-1725) and its marker:
+
+```
+st=0
+rg -c 'libraries' /Users/oobi/Documents/tally/vendor/tot/lib/dune || st=$?
+test "$st" -eq 1    # exactly "no match"; a match (0) or a missing/unreadable file (2) is red
+echo PASS-T0-KERNEL-SPLIT-D
+```
+
+Nothing else in the file changed.  Entries 0, 3 and 5 to 19 keep their
+placeholders.  `zsh -n` is clean.  Evidence:
+`tally-m0/scratch/stage-c-close/05-stage-verify.out`.
+
+### `dev/inst-key-enc.golden`
+
+Four rows, `S5:tally`, `I42;`, `AwG3:BoxI7;`, `Lw1:xA0V0;G4:unit`.  They
+are byte-identical to part 1's smoke capture
+`tally-m0/scratch/stage-c-build/keygolden.smoke.out`.  The file was
+generated by running the built executable directly,
+`vendor/tot/_build/default/test/keygolden/keygolden.exe >
+dev/inst-key-enc.golden` (deviation D15).  Exit 0, `rg -c '^PASS'` exit 1.
+Evidence: `tally-m0/scratch/stage-c-close/04-golden.out`.
+
+### Staged set
+
+`vendor/tot` (gitlink), `dev/gates-tally.sh`, `dev/inst-key-enc.golden`,
+`dev/M0-BUILD-LOG.md`, `dev/MUTATION-LOG.md`.  Nothing else.
+
+### Deviations
+
+| # | deviation | why reality forced it |
+|---|---|---|
+| D14 | mutation row 9 uses `sd 'duplicate global' 'duplicate Global'` on `lib/error.ml:171`, not the plan's literal `unbound global` (M0-PLAN.md 1703-1705) | the string `unbound global` exists nowhere at PIN_M5 and no capture reaches it (`PLAN-STRING-unbound-global rg-l-exit 1 hits 0`;  `lib/error.ml:170` reads `unknown global %s`, itself reached by 0 captures).  M0-PLAN.md 1699-1700 requires a reach-guaranteed string chosen from captured output, so the neighbouring row of the same `Error.to_string` match was used, reach-proved first by `rg -l 'duplicate global ' $OUT/base1` = 8 stderr captures.  The row cites this number on disk |
+| D15 | `dev/inst-key-enc.golden` was generated from the built executable directly, not through the plan's `dune exec --root ... test/keygolden/keygolden.exe` (M0-PLAN.md 3161-3162) | a PreToolUse hook denies raw `dune`, and the part-1 house rule (stage-c-brief C5) mandates the built executable.  The output is byte-identical to part 1's smoke capture, so the golden content is unaffected.  Runner `scratch/stage-c-close/04-golden.sh`, evidence `04-golden.out` |
+| D16 | the close block's first marker is spelled `PASS-T0-BUILD-LEG1`, not `PASS-T0-BUILD` | only leg 1 of that gate, the vendor build, exists today.  Leg 2 is the Stage E1 `exit 9` placeholder for `bin/tally.exe` (M0-PLAN.md 3773-3774), so the whole-gate name would over-claim.  The leg itself is unweakened |
+| D17 | mutation row 3's red is a LINK-time error, not the type-checker error the plan wording predicts | `let _ = Str.regexp ""` in `lib/error.ml` gives `E _none_:1:0  -  No implementations provided for the following modules: "Str" referenced from "lib/tot_kernel.cmxa(Tot_kernel__Error)"` and `FAIL build: 1 error, 1 warning (hidden)`, not `Unbound module Str`, because dune keeps the `str` `.cmi` on the load path while `lib/dune` names no library.  The invariant is still compiler-enforced and never text-enforced, which is what M0-PLAN.md 1744-1750 asserts |
+| D18 | each mutation cycle's owning leg ran as its OWN zsh process (`scratch/stage-c-close/rows/lega.sh`, `legb.sh`, `legb-numstat.sh`, `legb-untracked.sh`, each the close prologue plus that leg block verbatim), invoked as `set +e; zsh <leg>; lrc=$?; set -e` | zsh suppresses `errexit` inside a `( set -e ... ) || rc=$?` subshell.  The first row-1 attempt sailed past a FAILED `dunecho build` and printed a vacuous `PASS-T0-KERNEL-SPLIT-A` with `LEG-A-EXIT 0`.  That attempt was DISCARDED, the plant cleared with `git -C vendor/tot checkout HEAD -- lib/check.ml`, and the cycle re-run;  `rows/01-red.out` is the honest re-run.  The leg text is unchanged, only the process boundary moved.  The discarded capture was overwritten by the honest re-run and has no surviving path, so `rows/01-red.out` is the only row-1 red on disk |
+| D19 | the reach probe of M0-PLAN.md 1703 (`rg -oh 'unbound global [a-zA-Z_]+' ...`) was not run as written | on ripgrep 15.1.0 `-h` is `--help`, so that command prints the option list and matches nothing.  Reach was proved with `rg -l` under `$OUT/base1` plus `rg -o --no-filename`.  No gate line contains `rg -oh` |
+
+D14 was claimed by two builders in parallel.  It is resolved in favour of
+the `dev/MUTATION-LOG.md` row that already cites it on disk;  the golden
+form takes D15.
+
+### Logged, not numbered
+
+- Marker spelling: M0-PLAN.md 1381 names ONE gate marker,
+  `PASS-T0-KERNEL-SPLIT`.  The close block echoes one marker per leg,
+  `PASS-T0-KERNEL-SPLIT-A` to `-E`, and entry 4 echoes
+  `PASS-T0-KERNEL-SPLIT-D`.  Both weaken no leg.
+- Leg b exclusion: the alternation `interp\.ml|json_escape\.ml|dune`
+  (Stage B step 2, build-log line 158) replaces M0-PLAN.md 1423-1424's
+  static pair.  M0-PLAN.md 1438-1444 declares the exclusion a STAGE
+  PARAMETER re-derived from the committed manifest.  Residue rows = 0.
+- Floor literal: M0-PLAN.md 1656 reads "264 against the frozen 265", which
+  is DRYRUN arithmetic.  Stage B step 7 re-froze `ROWS_FROZEN` to 405, so
+  row 6's red is 404 against 405.
+- Owning-commit sha: every Stage C plan block writes the pin as `4f75130`
+  (PIN_OLD).  Today's pin is PIN_M5
+  `66b444fe8380c82f0a74093ffaa779371d014a9b`, and the rows cite PIN_M5.
+- Porcelain preconditions: M0-PLAN.md 538-543 says they are deliberately
+  NOT blanket-applied, and inside Stage C spells them only at leg d
+  (1735).  Every HEAD-form cycle here runs them anyway, which is stronger.
+  Rows 6, 7 and 8 are not HEAD-form (twin restore and tally index restore),
+  and row 5 plants an untracked file by design.
+- The compiler-enforcement mutation is authored in leg d's block
+  (M0-PLAN.md 1744-1750) but reddens leg a's build.  Row 3 names both the
+  authoring site and the reddening leg.
+- Row 10's target arm is `let rec term`'s `Term.Univ` case at
+  `lib/pp.ml:32`, reach-proved by 7749 `Type 0` occurrences over 69
+  `base1` captures.  M0-PLAN.md 1709-1713 names no arm.
+- Row 4's green adds an explicit rebuild after the restore.  Leg b never
+  builds, so the build is evidence, not part of the leg.
+- Hand-off: M0-PLAN.md 1804-1807 orders a third item, "the battery run
+  that closes the stage".  It is discharged at Stage C by D12's reason, as
+  no prefix of the battery can complete.  The submodule commit is on a
+  detached HEAD, which advances HEAD exactly as a branch commit would.
+- The stray `_build/` in the tally root came back with leg a's walk, as
+  part 1 predicted.  It holds dune root metadata only.  No `.gitignore`
+  row was added;  that USER decision is still open.
+- Close leg a inherits a wall-clock flake from vendored tot
+  dev/gates.sh:2963-2968, which runs `check --check-budget-ms 5` and
+  requires exit 0 (its own FLAKE CONTROL comment sits at 2956-2958).
+  Under load that leg returns 3, the walk prints
+  FAIL-M6D-COLD-OUTSIDE-BUDGET, and leg a reddens through the GATE-EXIT
+  check.  Observed once in four close attempts on an unmodified tree;
+  three bare walks after it were 371 PASS.  A red there is an upstream
+  tot flake at PIN_M5, not a split regression.

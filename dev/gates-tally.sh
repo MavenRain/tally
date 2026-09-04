@@ -43,7 +43,10 @@ echo PASS-T0-BASELINE
 echo FAIL-T0-KERNEL-LAYERING-PLACEHOLDER; exit 9   # Stage D0
 
 # 4. PASS-T0-KERNEL-SPLIT leg d
-echo FAIL-T0-KERNEL-SPLIT-D-PLACEHOLDER; exit 9   # Stage C
+st=0
+rg -c 'libraries' /Users/oobi/Documents/tally/vendor/tot/lib/dune || st=$?
+test "$st" -eq 1    # exactly "no match"; a match (0) or a missing/unreadable file (2) is red
+echo PASS-T0-KERNEL-SPLIT-D
 
 # 5. PASS-T0-TOWER-SCOPE
 echo FAIL-T0-TOWER-SCOPE-PLACEHOLDER; exit 9   # Stage D
