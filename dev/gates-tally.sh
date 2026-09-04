@@ -33,7 +33,11 @@ test "$dst" -eq 1        # NO dryrun-* child survives step 7's delete; a hit (0)
 echo PASS-T0-PIN
 
 # 2. PASS-T0-BASELINE
-echo FAIL-T0-BASELINE-PLACEHOLDER; exit 9   # Stage B step 5 cuts the baseline
+test -s "$BASEDIR/gate-exit.txt"
+test "$(cat "$BASEDIR/gate-exit.txt")" -eq 0
+test -s "$BASEDIR/fail-count.txt"
+test "$(cat "$BASEDIR/fail-count.txt")" -eq 0
+echo PASS-T0-BASELINE
 
 # 3. PASS-T0-KERNEL-LAYERING
 echo FAIL-T0-KERNEL-LAYERING-PLACEHOLDER; exit 9   # Stage D0

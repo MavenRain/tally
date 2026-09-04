@@ -12,3 +12,4 @@ M	test/dune
 M	test/main.ml
 M	test/surface.ml
 R	lib/interp.ml	interp/interp.ml
+R	lib/json_escape.ml	interp/json_escape.ml
