@@ -1,0 +1,3 @@
+(executable
+ (name tally)
+ (libraries tot.kernel tot.interp tot.surface))

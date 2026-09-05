@@ -1031,3 +1031,340 @@ untracked `_build/` at the tally root is tolerated and never staged.
 | D91 | the repair task names six `prose_fixes`;  five on-disk sites exist and all five are applied | the first-pass judge file `tally-m0/scratch/stage-d-close-verify/judge-pass-1.md` records exactly two prose findings:  J3 (the `PASS-T0-WORD-INERT` entry label, at `dev/MUTATION-LOG.md:54` and at stage-d-close-report.md section 3 row 9) and J4 (the `exit 9` site count, at stage-d-close-report.md section 1, `dev/M0-BUILD-LOG.md` in this section and stage-d-commit-msg.txt).  The two further `battery entry 12` labels, `dev/MUTATION-LOG.md:62` (`PASS-T0-NO-NEW-AXIOM`) and `:91` (`AXIOM_ROWS_FROZEN`), are CORRECT on disk (`dev/gates-tally.sh:142-158`) and were left alone, so no sixth fix exists |
 | D92 | the repair pass writes its docs in TWO passes around the final battery (`30-docs.sh` with `30-docs.py` for every already-observed value, `32-close.sh` with `32-docs2.py` for the three battery-evidence rows), and its red battery `rows/33-red-battery.out` stamps a 0 s wall | no count may be written before it is observed, so the `31-final-battery.out` row waits for the final battery.  The red battery is fail-fast at entry 6, and entries 0 to 5 are `git`, `rg` and a warm `dunecho build`, so 0 s is the expected cost of a red that never reaches the walk;  the green batteries carry the real cost, 99 s at row 33 and 96 s at `31-final-battery.out` |
 | D93 | the commit SUBJECT reads `33 mutation rows` where brief S3(n) mandates the subject verbatim with `32 mutation rows` | the plan-mandated entry-6 row (D90) makes 33 the correct count, and M0-PLAN.md mandates no subject text (`rg -n 'mutation rows' M0-PLAN.md` = 0 matches) |
+
+## Stage E: `bin/tally.exe`, the speed gate, the exclusion gates, the record gates
+
+Stage E builds the `tally check` driver, flips the last seven `exit 9`
+placeholders of `dev/gates-tally.sh` to real legs, and lands the three M1-facing
+records.  Four ordered sub-blocks, one workflow, one user commit at the end
+(Stage E brief S0 Q1 ruling (a)): E1 the driver (`plan 3273-3312`), E2 the speed
+gate (`plan 3313-3410`), E3 the exclusion gates (`plan 3411-3604`), E4 the
+documents and the close (`plan 3605-3719`).
+
+### Entry record
+
+| check | expectation | observed |
+|---|---|---|
+| `dev/gates-tally.sh` at Stage D close | 225 lines, 7 `exit 9` placeholders (lines 18, 208, 211, 214, 217, 220, 223) | as expected;  pre-edit copies kept per sub-block under `tally-m0/scratch/stage-e/` |
+| `dev/M0-BUILD-LOG.md` before this section | 1033 lines, last deviation `D93` | 1033 lines, `D93` |
+| `tally-m0/RATIFICATIONS.md` | items 1-4 plus the three Q2 rows the main loop appends before launch | 7 items;  items 5-7 present, dated 2026-09-04 |
+| `dev/verdict-record.digest` | `f421365b6a9008d7e7e28c444997ce874d8d4496c4c7911008e6baae2add629f` | equal, and battery entry 18 leg 1 re-derives it from the verdict file at every run |
+| `PIN` | `66b444fe8380c82f0a74093ffaa779371d014a9b`, never advanced in M0 | unchanged |
+| `vendor/tot` HEAD | the Stage D close commit `de61f4e` | `de61f4e`, porcelain 0 lines at E4 entry and at E4 exit |
+| E4's three artifacts | `dev/CITATION-LEDGER.md`, `dev/PARITY-LEDGER-DELTA.md`, `dev/gates-m1-entry.sh` absent | all three absent, then created here |
+
+### Exit records, per sub-block
+
+| sub-block | what landed | entry made real | evidence |
+|---|---|---|---|
+| E1 | `bin/dune` (3 lines, the `plan 3277-3281` stanza with the three PUBLIC names `tot.kernel tot.interp tot.surface`) and `bin/tally.ml` (138 lines, 7 doc-commented top-level items, `check` only, `run`/`prims`/anything else = usage on stderr and exit 2, `--no-prelude`, `--no-axioms`, `--serror-exit N`) | 0 leg 2 (`PASS-T0-BUILD`) | `tally-m0/scratch/stage-e/02-e1-build.out`, the W1-W5 acceptance shapes at `03-w1-w5.out` (`W-FAILS=0`), the flag and contract probes at `07-flags.out` (`FLAG-FAILS=0`) |
+| E2 | entry 14 as the `plan 3368-3383` block verbatim;  `tally-m0/gate-out/speed/` created and truncated up front per Q10 | 14 (`PASS-T0-SPEED`) | `10-e2-speed.out`, `12-table-and-audit.out`, the table below |
+| E3 | entry 15 as the `plan 3421-3447` block verbatim and entry 16 with the Q7 walker | 15 (`PASS-T0-NO-EMITTER`), 16 (`PASS-T0-NO-SURFACE-TAL`) | `13-g5g6-alone.out`, `18-final-green.out`: `G5-FLOOR=16`, `G5-EXCLUSION-ROWS=0`, `G5-DENY-ROWS=7`, `G5-VENDOR-ADDED=2064`, `G5-HITS=0`, `G5-RESIDUAL=0`, `G5-ALLOWLIST=0`, `G6-COUNT=0` |
+| E4 | `dev/CITATION-LEDGER.md` (89 lines: section 10's gate-defining paragraph, the 11 `C` rows all `UNVERIFIED`, the three M1 fence rows, the debt appendix), `dev/gates-m1-entry.sh` (11 lines, the `plan 3642-3652` body verbatim, committed executable, staged mode `100755`), `dev/PARITY-LEDGER-DELTA.md` (49 lines), this section | 17 (`PASS-T0-M1-GATE-DEFINED`), 18 (`PASS-T0-RECORD-INTACT`), 19 (`PASS-T0-EXIT-RATIFIED`) | `09-e4-docs.out`, `19-e4-buildlog.out`, `09-e19-pending.out` |
+
+`dev/gates-tally.sh` grew 225 -> 224 (E1 deleted line 18's placeholder) -> 237
+(E2) -> 264 (E3) -> 275 (E4), and its `echo PASS-T0` marker count grew 14 -> 17
+-> 20.  At E4 exit there is no `exit 9` placeholder left and the last line is
+still `exit 0` (`plan 3916`, ruling (u)).  Every edit replaced exactly the
+placeholder line it owned: each sub-block proved the rest of the file
+byte-identical by `cmp` against a pre-edit copy, and E4's installer additionally
+re-derives the pre-edit text from the wired file
+(`NON-BLOCK-LINES-IDENTICAL=True` in `09-e4-docs.out`).
+
+### The M1-entry gate is red today, by design
+
+`zsh dev/gates-m1-entry.sh` exits 1 with rows C1 and C2 both `UNVERIFIED`
+(`09-m1gate-today.out`).  That is ruling (q) and `plan 3667-3670`: the gate runs
+at M1 ENTRY, and the M0 battery asserts only that it exists and echoes its
+marker.  Battery entry 17 anchors on the `echo` line, never on the bare marker
+string, which also lives in the script's comment header (`plan 3842-3844`).
+
+### Corrected commands
+
+| site | as the plan spells it | as it ran | why |
+|---|---|---|---|
+| entry 16's walker (`plan 3589-3590`) | a BSD `find` over `/Users/oobi/Documents/tally` with `-name '*.ml'`, `-not -path '*/vendor/*'`, `-not -path '*/_build/*'` | `fd -e ml --no-ignore . /Users/oobi/Documents/tally -E vendor -E _build`, the same `rg -v '/bin/tally\.ml$'` and `rg -v '/test/'` filters, the same `test ... -eq 0` polarity | the house rules ban that tool and the committed battery already uses `fd` at entries 9 and 12;  S0 Q7 ruling (b), deviation D96 |
+| the section 12 item 1 token (`plan 3615-3618`) | the token in its `(PENDING-USER-RATIFY)` spelling, for the user to replace later | the token written PENDING first, entry 19's red captured as observation O-E1, then the parenthesised dated form ruled in Q4 | the stamp was already given on 2026-09-03;  S0 Q4 and Q6 rulings (a), deviation D94 |
+| the cumulativity row (`plan 3678`) | `NEVER (PENDING-USER-RATIFY)` | the parenthesised dated form of S0 Q5 in `dev/PARITY-LEDGER-DELTA.md` | `RATIFICATIONS.md` item 2 spells the stamp with a dash, which entry 18 leg 3's regex rejects;  S0 Q5 ruling (a), deviation D95 |
+| the `bin/tot.ml` check-path cites (`plan 3300`) | `bin/tot.ml:23,37,92-107` | the current vendor HEAD sites `:52`, `:66`, `:152`, `:158`, `:240`, `:251` of 319 lines | the cites are at the OLD pin;  the plan itself asks for the re-cite, ruling (c), deviation D97 |
+
+### The speed table (`plan 3336-3341`, pasted from `tally-m0/gate-out/speed/speed-table.md`)
+
+| file | lines | BASE cold | BASE warm20 median | BASE stdev | CAND cold | CAND warm20 median | CAND stdev | ratio | verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| corpus-a.tot | 300 | 12872 | 6504 | 283 | 12881 | 6635 | 246 | 1.020 | PASS |
+
+All times are integer MICROSECONDS (perf_counter), warm20 median of 20 runs after one cold run per binary.
+machine: CPU Apple M2 Pro; macOS 26.4 build 25E246; dune 3.24.2; OCaml 5.2.1
+BASE_BIN /Users/oobi/Documents/tally-m0/baseline-66b444fe8380c82f0a74093ffaa779371d014a9b/tot-baseline.exe (prelude /Users/oobi/Documents/tally-m0-pin-m5/stdlib/prelude.tot)
+CAND_BIN /Users/oobi/Documents/tally/_build/default/bin/tally.exe (prelude /Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot)
+jitter JITTER-OK
+
+The gated statistic is `median_warm20(tally.exe) <= 2.0 * median_warm20(tot-baseline.exe)`
+in integer microseconds (`plan 3331`).  Cold numbers are reported, never gated.
+The jitter leg runs BEFORE the ratio leg, so a noisy ratio is a measurement
+failure and not a speed verdict (ruling (e)).  Both prelude arguments are passed
+per binary, never one shared value (ruling (d), `plan 3387-3397`).
+
+### Ratifications read at E4 (`tally-m0/RATIFICATIONS.md`, 7 items)
+
+The file lives outside the tally repo, so this commit does not carry it;  E4
+reads it and cites the item numbers.  No builder writes it (S0 Q2 ruling (a)).
+
+| item | subject | status |
+|---|---|---|
+| 1 | the M0-EXIT sequenced reading (section 12 item 1) | RATIFIED 2026-09-03 |
+| 2 | the cumulativity `NEVER` row (section 12 item 2) | RATIFIED per Q5, 2026-09-03 |
+| 3 | Stage B pin discipline | RATIFIED 2026-09-03 (plan-compliant) |
+| 4 | the R21F hygiene pass (L1-L3, LOW only) | RATIFIED to run 2026-09-03 |
+| 5 | the D9 `json_escape.ml` classification (`plan 4374`) | RATIFIED 2026-09-04;  the classification recorded in deviation D9 stands, so D9 is no longer open |
+| 6 | the D49/D52 m5e transcript golden growth, 10399 -> 10551 lines and 101 -> 116 blocks | RATIFIED 2026-09-04;  the Stage D golden is accepted at its recorded size |
+| 7 | the D53/D55 ANCHORS census drift, 101/62 -> 103/64 | RATIFIED 2026-09-04;  the census values recorded at Stage D stand |
+
+The three debts the Stage E brief Q2 carried (D9, D49/D52, D53/D55) are
+therefore RATIFIED, not carried to M1.
+
+### Deviations
+
+| id | deviation | reason |
+|---|---|---|
+| D94 | `plan 3615-3618` has E4 write the section 12 item 1 token in its `(PENDING-USER-RATIFY)` spelling for the user to replace, while `RATIFICATIONS.md` item 1 carries the unparenthesised `M0-EXIT-SUBSTITUTION RATIFY 2026-09-03 (chat, this file)`, which battery entry 19's regex (`plan 3903`) rejects | S0 Q4 rules (a): E4 writes the parenthesised dated form and cites item 1 on the same line, and `plan 3903` is unchanged.  The S0 row names `plan 3903`, so the ruling wins.  Q6 adds the proof: the token was written PENDING first and entry 19's red with it standing is observation O-E1, `tally-m0/scratch/stage-e/09-e19-pending.out` |
+| D95 | `plan 3517` and `plan 3678` mark cumulativity `NEVER (PENDING-USER-RATIFY)`, while `RATIFICATIONS.md` item 2 mandates the dash spelling `NEVER - RATIFY per Q5, 2026-09-03`, which entry 18 leg 3's regex (`plan 3867`) rejects | S0 Q5 rules (a): the row is written `cumulativity: NEVER (RATIFY per Q5, 2026-09-03)`, which the regex's alternation accepts.  The ruling wins;  no gate logic changed and the ratified sentence is intact |
+| D96 | `plan 3589-3590` spells entry 16's walker as a BSD `find` with `-name '*.ml'`, `-not -path '*/vendor/*'` and `-not -path '*/_build/*'`, a tool the house rules ban | S0 Q7 rules (b): `fd -e ml --no-ignore . /Users/oobi/Documents/tally -E vendor -E _build` with the same `rg -v` filters and the same `test ... -eq 0` polarity.  Both forms print 0 on the tree today.  Wired by E3 at `dev/gates-tally.sh:251-253` |
+| D97 | `plan 3300` cites the `bin/tot.ml` check path at `:23,37,92-107`, which are the OLD pin's line numbers | at the current vendor HEAD `de61f4e` the sites are `Source.read` at `:52`, `Run.script` at `:66`, the prelude reads at `:152,158`, the usage string at `:240` and the flag parse at `:251`, of 319 lines.  The plan itself asks for the re-cite, so there is no authority conflict;  `bin/tally.ml` was written against the re-cited sites |
+| D98 | row 80's per-class `rg -c` over the xtrace line counted 0 | zsh renders a multi-line argument as ONE `$'...'` line with escaped newlines, so the per-class count had nothing to match line by line.  Recounted off the escaped trace line (`tally-m0/scratch/stage-e/18-audit.sh`): 221 surviving `/vendor/` paths and 37 surviving `/_build/` paths on the red run and none on the green run, so the leg is non-vacuous.  Evidence `18-audit.out` |
+| D99 | the Stage E brief's row budget marks exactly rows 80 and 88 `standalone`, yet rows 82-84 (`plan 3662-3666`) and row 90 (`plan 3912-3914`) also run on scratch COPIES and touch no tree, and shadow row `plan 4060` dispositions entry 19's mutation `own` | no S0 row names those plan lines, so the plan wins: `plan 4060`'s `own` disposition and the two-`standalone` count both stand, and each copy-only row records its restore form (discard the copy, proved by `test ! -e`).  Row 83 is a GREEN row with no red leg, so the red-at-the-named-leg rule of ruling (t) is inapplicable there |
+
+### Logged, not numbered
+
+- E4's runners are numbered `09`, then `19` to `22`, and not a contiguous run
+  from `09`: E2 and E3 had already taken `10` to `18` in the same scratch
+  directory, and re-using those numbers would overwrite their captures.  `09` is
+  the number the brief's build sequence names for E4, and the mandated capture
+  path `scratch/stage-e/09-e19-pending.out` is unchanged.  D12's precedent for
+  runner shape holds, so no number is taken.
+- `dev/CITATION-LEDGER.md` gives the three M1 fence rows (`F-SPEC`, `F-EMIT`,
+  `F-EMIT-SHIFT`) the same status column and the same terminal-cell shape as
+  rows C1-C11, so an M1 stage can invoke `gates-m1-entry.sh` with a fence id in
+  its ROWS argument.  The plan names the three rows (`plan 2118-2124`,
+  `plan 2138-2144`) without spelling a shape.  The default `ROWS='C(1|2)'`
+  cannot match them, so the M0 gate behaviour is unchanged.
+- `dev/gates-tally.sh` stays MODIFIED-UNSTAGED through E1 to E4: no ruling names
+  a staging line for it, and the stage close stages it with the rest.
+
+### Section 12 item 1: the M0-EXIT substitution, recorded as an explicit exception
+
+M0-PLAN.md section 12 (`plan 4513-4559`) puts exactly TWO stamps to the user.
+Item 1 is the M0-EXIT criterion, and the verdict's own idiom (verdict line 99)
+is to record such a substitution in the build log as an explicit exception.
+Stated in the SAME qualified form as the stamp text (`plan 3607-3614`,
+`plan 4536-4549`):
+
+The byte-diff clause of the verdict's PASS-T0-KERNEL-SPLIT sentence (verdict
+line 90), "a byte-diff of every carried module against the pinned SHA is empty
+on the default path", is proved at Stage C close in its strongest achievable
+form, leg C-b green plus its mutation row, never weakened in place: every
+carried `lib/` module is byte-identical to `PIN` EXCEPT the manifest's named
+exception rows, two at today's file set (`dev/tower-manifest.txt` rows 51 and
+52, `R lib/interp.ml interp/interp.ml` and `R lib/json_escape.ml
+interp/json_escape.ml`) plus any Stage B step 2 move-out row, `lib/interp.ml`'s
+rename with its one added `open Tot_kernel` line, and `lib/dune`'s dropped
+`(libraries str)`, whose content leg C-d pins to zero `libraries` lines.  The
+trailing qualifier "on the default path" is read as a BUILD-path qualifier (the
+default dune build target, as opposed to the test or dev profiles), not as a
+carve-out for Stage D's tower edits, so the qualifier does not shrink the
+substitution being ratified.  M0 EXIT is then governed by the nine-file tower
+allowlist (PASS-T0-TOWER-SCOPE) plus old-corpus behavior byte-identity
+(PASS-T0-WORD-TOWER leg b).
+
+Battery entry 19 (PASS-T0-EXIT-RATIFIED, `plan 3903`) reads the token line
+below, so the battery cannot reach `GATE-EXIT=0` until the stamp is given.  The
+token is WIRING for this same item, not a third stamp.
+
+M0-EXIT-SUBSTITUTION (RATIFY 2026-09-03)  ratified in chat 2026-09-03, recorded in tally-m0/RATIFICATIONS.md item 1;  S0 Q4 ruling (a), deviation D94
+
+### Stage E close: the final battery (`plan 4117-4124`)
+
+Run verbatim from `/Users/oobi/Documents/tally-m0/scratch/stage-e/23-close-battery.sh`
+step 2, the log kept on disk for later re-verification:
+
+```
+st=0; zsh /Users/oobi/Documents/tally/dev/gates-tally.sh \
+  > /Users/oobi/Documents/tally-m0/m0-final-gate.log 2>&1 || st=$?
+echo "GATE-EXIT=$st"
+pst=0; rg -c '^PASS' /Users/oobi/Documents/tally-m0/m0-final-gate.log || pst=$?
+fst=0; rg -c '^FAIL' /Users/oobi/Documents/tally-m0/m0-final-gate.log || fst=$?
+test "$fst" -eq 1
+```
+
+Observed: `GATE-EXIT=0`, also written to
+`tally-m0/scratch/stage-e/12-gate-exit.txt`;  `rg -c '^PASS'` prints 20 and
+exits 0;  `rg -c '^FAIL'` prints nothing and exits 1, so the FAIL count is the
+intended zero;  `test "$fst" -eq 1` passes.  All 20 `^PASS` rows are
+`^PASS-T0` markers, one per battery entry, in battery order:
+
+| log line | marker | entry |
+|---|---|---|
+| 3 | `PASS-T0-BUILD` | 0 (both legs, leg 2 the new `bin/tally.exe` build) |
+| 4 | `PASS-T0-PIN` | 1 |
+| 5 | `PASS-T0-BASELINE` | 2 |
+| 7 | `PASS-T0-KERNEL-LAYERING` | 3 |
+| 8 | `PASS-T0-KERNEL-SPLIT-D` | 4 |
+| 9 | `PASS-T0-TOWER-SCOPE` | 5 |
+| 10 | `PASS-T0-KERNEL-SPLIT-E` | 6 |
+| 11 | `PASS-T0-WORD-INERT` | 7 |
+| 12 | `PASS-T0-WORD-UNREACHED` | 8 |
+| 67 | `PASS-T0-WORD-ORACLE` | 9 |
+| 70 | `PASS-T0-WORD-BOUNDARY` | 10 |
+| 71 | `PASS-T0-WORD-QUANTITY` | 11 |
+| 72 | `PASS-T0-NO-NEW-AXIOM` | 12 |
+| 76 | `PASS-T0-WORD-TOWER` | 13 |
+| 77 | `PASS-T0-SPEED` | 14 (Stage E) |
+| 79 | `PASS-T0-NO-EMITTER` | 15 (Stage E) |
+| 80 | `PASS-T0-NO-SURFACE-TAL` | 16 (Stage E) |
+| 81 | `PASS-T0-M1-GATE-DEFINED` | 17 (Stage E) |
+| 82 | `PASS-T0-RECORD-INTACT` | 18 (Stage E) |
+| 83 | `PASS-T0-EXIT-RATIFIED` | 19 (Stage E) |
+
+The battery's last line is still `exit 0` (ruling (u)) and the script holds no
+`exit 9` placeholder: the only surviving `exit 9` text is the header comment at
+`dev/gates-tally.sh:4`.  `dev/gates-tally.sh` is 275 lines with 20
+`^echo PASS-T0` markers.
+
+### Stage E close: what ran green, with paths
+
+| what | how | observed |
+|---|---|---|
+| the whole battery | `zsh /Users/oobi/Documents/tally/dev/gates-tally.sh` | `GATE-EXIT=0`, log `/Users/oobi/Documents/tally-m0/m0-final-gate.log`, 20 `^PASS-T0` markers, 0 `^FAIL` rows |
+| entry 14's artifacts | `dev/timing_harness2.py` writes them | `/Users/oobi/Documents/tally-m0/gate-out/speed/{jitter.txt,base-warm-median.txt,cand-warm-median.txt,speed-table.md}`, `jitter.txt` reading `JITTER-OK` on the first attempt |
+| entry 15's captures | truncated up front per ruling (g) | `gate-out/g5-hits.txt` 0 bytes, `gate-out/g5-residual.txt` 0 bytes, `gate-out/g5-vendor-added.txt` 2064 rows |
+| entry 15's frozen inputs | `wc -l` | `dev/g5-deny.txt` 7 rows, `dev/g5-allowlist.txt` 0 rows |
+| entry 16's walker, by hand at the close | the S0 Q7 (b) `fd` form | count 0 |
+| entry 18's two token legs | the exact regexes of `plan 3867` and `plan 3903` | both match: `dev/PARITY-LEDGER-DELTA.md` for the cumulativity token, `dev/M0-BUILD-LOG.md` for the M0-EXIT token |
+| the pin twins | `diff -r gate-out/base1 gate-out/base2` | 0 lines, 405 entries each |
+| the pin | `cat /Users/oobi/Documents/tally/PIN` | `66b444fe8380c82f0a74093ffaa779371d014a9b`, never advanced |
+| the vendor gitlink | `git -C tally ls-files -s vendor/tot` | `de61f4e094b82755478f214050d5b2258a466009` |
+| no plant survives | `fd -e ml . /Users/oobi/Documents/tally -E vendor -E _build --max-depth 2 \| rg -c '/lib/'` | exit 1, and the walk sees only `bin/tally.ml` |
+| vendor tree | `git -C /Users/oobi/Documents/tally/vendor/tot status --porcelain` | EMPTY |
+| the M1-entry gate | `dev/gates-m1-entry.sh` with its default `ROWS` | red TODAY by design, ruling (q), C1 and C2 both `UNVERIFIED` |
+
+Runner captures: `tally-m0/scratch/stage-e/23-close-battery.out` (state plus the
+close-out invocation) and `24-close-audit.out` (the post-battery audit).
+
+### Stage E wired entries
+
+| battery entry | marker | gate lines | plan | mutation rows |
+|---|---|---|---|---|
+| 0 leg 2 | `PASS-T0-BUILD` | `dev/gates-tally.sh:16-19` (leg 2 the `dunecho build -- --root /Users/oobi/Documents/tally bin/tally.exe` line, wired by DELETING the line-18 placeholder, deviation D104) | `plan 3745-3751`, `plan 3768-3775` | 72 |
+| 14 | `PASS-T0-SPEED` | `206-220` | `plan 3363-3409`, `plan 3833-3834` | 73, 74 |
+| 15 | `PASS-T0-NO-EMITTER` (G5) | `222-248` | `plan 3413-3584`, `plan 3835` | 75, 76, 77, 78, 79, 80 |
+| 16 | `PASS-T0-NO-SURFACE-TAL` (G6) | `250-253`, the S0 Q7 (b) `fd` walker | `plan 3586-3603`, `plan 3836` | 81 |
+| 17 | `PASS-T0-M1-GATE-DEFINED` | `255-258` | `plan 3837-3854` | 85, 86 |
+| 18 | `PASS-T0-RECORD-INTACT` | `260-269` | `plan 3855-3901` | 87, 88, 89 |
+| 19 | `PASS-T0-EXIT-RATIFIED` | `271-273` | `plan 3902-3914` | 90 |
+
+Rows 82, 83 and 84 probe `dev/gates-m1-entry.sh` itself, which is an M1-entry
+gate and not a battery entry (`plan 3662-3666`).
+
+### The speed table AS THE FINAL BATTERY WROTE IT
+
+`dev/timing_harness2.py` rewrites `gate-out/speed/speed-table.md` on every
+entry-14 run, so the paste under "The speed table" above is E2's pre-close
+measurement and this one is the close (deviation D111).  Both pass the same
+gated statistic.
+
+| file | lines | BASE cold | BASE warm20 median | BASE stdev | CAND cold | CAND warm20 median | CAND stdev | ratio | verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| corpus-a.tot | 300 | 13116 | 6855 | 689 | 29725 | 6944 | 280 | 1.013 | PASS |
+
+All times are integer MICROSECONDS (perf_counter), warm20 median of 20 runs after one cold run per binary.
+machine: CPU Apple M2 Pro; macOS 26.4 build 25E246; dune 3.24.2; OCaml 5.2.1
+BASE_BIN /Users/oobi/Documents/tally-m0/baseline-66b444fe8380c82f0a74093ffaa779371d014a9b/tot-baseline.exe (prelude /Users/oobi/Documents/tally-m0-pin-m5/stdlib/prelude.tot)
+CAND_BIN /Users/oobi/Documents/tally/_build/default/bin/tally.exe (prelude /Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot)
+jitter JITTER-OK
+
+The two median cells are byte-equal to `base-warm-median.txt` (6855) and
+`cand-warm-median.txt` (6944);  the gated limit is `6855 * 2 = 13710`
+microseconds.  The CPU brand is patched in with `sd -s` from the one
+unsandboxed `sysctl -n machdep.cpu.brand_string` reading E2 captured to
+`tally-m0/scratch/stage-e/12-cpu-brand.txt` (ruling (f));  no new unsandboxed
+command ran at the close.  Load at the close: `7.43 7.86 7.79`, and
+`jitter.txt` read `JITTER-OK` on the first attempt, so the Q8 one-re-run path
+never fired and no threshold and no corpus was touched.
+
+### Stage E mutation rows
+
+`dev/MUTATION-LOG.md` gains cycle rows 72 to 90, stage letter `E`, so the cycle
+table holds 90 data rows, and frozen-literal row 9, `DENY_ROWS_FROZEN = 7` at
+entry 15 (`plan 3429`, `plan 3481-3484`), so the frozen table holds 9 data rows.
+Coverage of the entries this stage made real: 0 leg 2 -> 72;  14 -> 73, 74;
+15 -> 75 to 80;  16 -> 81;  17 -> 85, 86;  18 -> 87, 88, 89;  19 -> 90.  Rows
+82 to 84 are the `gates-m1-entry.sh` probes.  Two rows are `standalone` in the
+brief's budget, 80 and 88;  rows 82, 83, 84 and 90 also run wholly on scratch
+copies and are recorded as cycle rows with copy-only restores, per the plan
+(deviation D99).  Every red is the leg its row NAMES, checked against the shadow
+table `plan 4046-4060`;  row 83 is a GREEN row with no red leg, so ruling (t)
+does not apply to it.
+
+### Deviations, the complete Stage E list
+
+This table is the whole stage record, D94 to D111, in numeric order with no gap
+and no duplicate.  Rows D94 to D99 restate the four sub-block rows above in the
+same words;  D100 onward are recorded here for the first time.
+
+| # | plan or brief line | observed |
+|---|---|---|
+| D94 | `plan 3615-3618` has E4 write the section 12 item 1 token as `(PENDING-USER-RATIFY)` for the user to replace, while `RATIFICATIONS.md` item 1 carries the unparenthesised `M0-EXIT-SUBSTITUTION RATIFY 2026-09-03 (chat, this file)`, which entry 19's regex (`plan 3903`) rejects | S0 Q4 rules (a): the parenthesised dated form is written and item 1 cited on the same line, `plan 3903` unchanged.  The S0 row names `plan 3903`, so the ruling wins.  Q6 adds the proof: the PENDING form was written first and entry 19's red with it standing is observation O-E1 |
+| D95 | `plan 3517` and `plan 3678` mark cumulativity `NEVER (PENDING-USER-RATIFY)`, while `RATIFICATIONS.md` item 2 mandates the dash spelling `NEVER - RATIFY per Q5, 2026-09-03`, which entry 18 leg 3's regex (`plan 3867`) rejects | S0 Q5 rules (a): the row reads `cumulativity: NEVER (RATIFY per Q5, 2026-09-03)`, accepted by that regex's alternation.  Observed at `dev/PARITY-LEDGER-DELTA.md` line 23, count exactly 1 |
+| D96 | `plan 3589-3590` spells entry 16's walker as a BSD `find` with `-name '*.ml'`, `-not -path '*/vendor/*'` and `-not -path '*/_build/*'`, a tool the house rules ban | S0 Q7 rules (b): `fd -e ml --no-ignore . /Users/oobi/Documents/tally -E vendor -E _build` with the same `rg -v` filters and the same `test ... -eq 0` polarity, wired at `dev/gates-tally.sh:251-253`.  Count 0 clean, 1 with the row-81 plant |
+| D97 | `plan 3300` cites the `bin/tot.ml` check path at `:23,37,92-107`, the OLD pin's line numbers | at vendor HEAD `de61f4e` (319 lines) the sites are `Tot_surface.Source.read` at `:52`, `Run.script` at `:66`, the two prelude reads at `:152,158`, the usage string at `:240` and the flag parse at `:251`.  Re-cited in `bin/tally.ml`'s header doc comment;  the plan itself asks for the re-cite, so nothing else changed |
+| D98 | row 80's per-class `rg -c` over the `set -x` trace counted 0 even though the argument held hundreds of paths | zsh renders a MULTI-LINE command argument as ONE physical `$'...'` line with escaped newlines, so an assertion anchored on `^test -z '/Users/...` cannot match and a per-line count has nothing to match.  Fixed by matching `^test -z \$?'` and by recounting the classes with `rg -o`: 221 `/vendor/` paths and 37 `/_build/` paths on the red run, none on the green run.  The defect was in the measurement, never in the leg;  evidence `tally-m0/scratch/stage-e/18-audit.out` |
+| D99 | the brief's row budget marks exactly rows 80 and 88 `standalone`, yet rows 82 to 84 (`plan 3662-3666`) and row 90 (`plan 3912-3914`) also run on scratch COPIES and touch no tree, and shadow row `plan 4060` dispositions entry 19's mutation `own` | no S0 row names those plan lines, so the plan wins: `plan 4060`'s `own` disposition and the two-`standalone` count both stand, and each copy-only row records its restore form (discard the copy, proved by `test ! -e`).  Row 83 is a GREEN row with no red leg, so ruling (t) is inapplicable there |
+| D100 | `plan 3295` sizes `bin/tally.ml` at "roughly 50 lines" | 138 lines, because the house rule puts a doc comment on every one of the 7 new top-level items and the file reproduces tot's whole three-flag parser rather than a partial one.  Build reports 0 errors, 0 warnings |
+| D101 | `plan 4255-4260` (W3) pins a `type mismatch:` error whose expected and found types print the two DISTINCT neutral spines formatted as at `plan 4207`, which renders NAMED terms | the pretty printer renders an open binder as its de Bruijn index, so W3's line is `type mismatch: expected (((Eq U64) ((u64Add #1) #0)) ((u64Add #0) #1)), found (((Eq U64) ((u64Add #1) #0)) ((u64Add #1) #0))`.  Proved to be the shared front end's rendering by `cmp` against the vendor `tot.exe` on the same fixture, so the byte-exact expected file pins the index form |
+| D102 | `plan 4250-4253` (W2) and `plan 4272-4288` (W5) give def bodies only, yet pin a rendered check line | the fixtures add the `check <name>` items that make those lines observable (W2 `check u8Wraps`;  W5 `check eqTrue`, `check cmpLt`), which cannot weaken the row.  Observed `u8Wraps : (((Eq U8) 0u8) 0u8)`, `eqTrue : (((Eq Bool) true) true)`, `cmpLt : (((Eq Ordering) lt) lt)` |
+| D103 | `plan 4219` spells `tally check m0word-tower.tal` with no environment | prelude resolution is exe-relative, and from `_build/default/bin/tally.exe` it lands on the ABSENT `/Users/oobi/Documents/tally/stdlib/prelude.tot` (the tally root is not a tot-shaped tree, the very reason `plan 3387-3397` gives for entry 14's per-binary prelude arguments), so W1 to W5 run with `TOT_PRELUDE=/Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot` and a scratch `TOT_CACHE_DIR` |
+| D104 | the E1 edit table and `plan 3745-3751` describe entry 0 leg 2 as REPLACING the line-18 `exit 9` placeholder with the `dunecho build` line | the committed script already carried that exact line at line 19, dead behind the placeholder's `exit 9`, so the wiring is the DELETION of line 18 alone: 225 -> 224 lines, every other line byte-identical by `cmp` against `awk 'NR!=18'` of the pre-edit copy |
+| D105 | the E2 task text says "Runners numbered from 04" | E1 already occupied 04 to 08 under `tally-m0/scratch/stage-e` and 09 was reserved by S0 Q6 for E4's `09-e19-pending.out`, so E2 numbered its runners 10, 11, 12.  No plan line is contradicted, the plan fixing no runner numbers |
+| D106 | `plan 3402-3405` sizes the row-73 plant against "a 10-30 ms baseline median" | the baseline warm20 median is 6504 to 6855 microseconds (6.5 to 6.9 ms) across five measurements, roughly half the low end of the plan's band, so the ratio limit is about 13000 microseconds and not 20000 to 60000.  The 50 ms wrapper plant still reds the named leg by a wide margin (`test 72023 -le 13004`), so row 73 stands as written;  the stale band is recorded, not acted on |
+| D107 | `plan 3336` and the brief direct E2 to WRITE `$OUT/speed/speed-table.md` with the ten columns plus the machine line | the committed `dev/timing_harness2.py` already writes exactly that table (its lines 138-154), so E2 hand-wrote nothing: it truncated the directory, ran the harness, verified the shape and patched only the CPU brand, which the harness reports `unavailable` because `sysctl` is denied inside the sandbox |
+| D108 | the brief's C3 gives row 72 "the (n) precondition", but ruling (n) and `plan 3545-3550` are the VENDOR porcelain block, which belongs to entry 0 mutation A (`plan 3779-3784`);  `plan 3788-3795`'s mutation B plants in the TALLY repo with an index-form restore | the plan wins.  The vendor check ran anyway, being harmless: `pgit=0 pst=0`, vendor porcelain EMPTY, plus the tally-side precondition `git -C T diff --cached --name-status -- bin/tally.ml` printing `A	bin/tally.ml`.  E1 reported this row as D99 on the Stage E probe's pre-assignment;  the closer renumbers it to D108 because D99 landed on disk for the row-budget conflict above |
+| D109 | the brief's C6 says "runners numbered from 06" and names a proof filename in that series | stale for E3, E1 having used 00 to 08 and E2 10 to 12 in the same directory, so E3 used 13 to 18 and the closer 23 to 25.  No gate behavior is affected.  E3 reported this row as D99;  the closer renumbers it to D109 for the same reason as D108.  Same class as D105 |
+| D110 | `plan 4117-4124` and the brief's C12 give the close-out invocation with no sandbox note | the battery contains `diff` legs (entry 5's allowlist comparison and entry 18 leg 1's `shasum ... \| diff -`), and under the Bash sandbox `diff` reading `-` prints `diff: -: Operation not permitted`.  The first sandboxed run of the invocation therefore reddened at entry 5 with `GATE-EXIT=2` and only 5 markers (`PASS-T0-BUILD` to `PASS-T0-KERNEL-SPLIT-D`);  the same invocation re-run with the sandbox override prints `GATE-EXIT=0` with 20 markers.  Ruling (w) and Stage D ruling (r) already put `diff` outside the sandbox;  the deviation records that the WHOLE close-out invocation inherits that, not one command, and that a sandboxed re-verification of this log will read `GATE-EXIT=2` for that reason alone |
+| D111 | the brief's C4 and C12 both paste `gate-out/speed/speed-table.md`, and C12 runs the battery again | `dev/timing_harness2.py` rewrites the table on every entry-14 run, so the final battery replaced E2's numbers (BASE warm 6504, CAND warm 6635, ratio 1.020) with its own (BASE warm 6855, CAND warm 6944, ratio 1.013) and re-introduced `CPU unavailable`.  The close re-applied the one-command `sd -s` brand patch and appended the final table beside E2's paste rather than editing an already-written record;  both runs pass the same gated statistic |
+
+### Stage E observations
+
+- O-E1.  Entry 19 alone, run with the `(PENDING-USER-RATIFY)` token standing:
+  red, `PASS-T0-EXIT-RATIFIED` never printed, capture
+  `tally-m0/scratch/stage-e/09-e19-pending.out`, alongside
+  `tally-m0/scratch/stage-e/19-e4-buildlog.out:16-21` for the token standing.
+  The dated form of S0 Q4 then
+  landed at `dev/M0-BUILD-LOG.md` and the entry is green in the final battery.
+  Recorded as an observation, never as a cycle row (S0 Q6).
+- Speed: BASE warm20 median 6855 microseconds, CAND 6944, limit 13710, ratio
+  1.013, `JITTER-OK` on the first attempt, load `7.43 7.86 7.79`.
+- `tally-m0/RATIFICATIONS.md` holds 7 items at the close, so the three rows Q2
+  owed (D9, D49 with D52, D53 with D55) are recorded and no ratification debt
+  carries out of Stage E.
+- `/Users/oobi/Documents/tot` was read only through `git -C` and its porcelain
+  stays an observation, never a gate (Stage D ruling (dd), ruling (v)).
+- The stray `/Users/oobi/Documents/tally/_build` is left in place, never
+  `.gitignore`d and never deleted (`?? _build/` is the only untracked row).
+
+### Stage E close: staged set
+
+`git -C /Users/oobi/Documents/tally diff --cached --name-only` lists exactly the
+eight paths `plan 4090-4112` assigns to this stage and nothing under `_build`,
+`gate-out` or `vendor`: `bin/dune`, `bin/tally.ml`, `dev/CITATION-LEDGER.md`,
+`dev/M0-BUILD-LOG.md`, `dev/MUTATION-LOG.md`, `dev/PARITY-LEDGER-DELTA.md`,
+`dev/gates-m1-entry.sh`, `dev/gates-tally.sh`.
+`git -C /Users/oobi/Documents/tally diff --name-only` is EMPTY and
+`git -C /Users/oobi/Documents/tally/vendor/tot status --porcelain` is EMPTY.
+
+### M0 exit criterion
+
+`plan 4126-4135`: M0 is COMPLETE when the close-out invocation prints
+`GATE-EXIT=0`, the FAIL count is 0, and every gate has a mutation-log row.  All
+three hold at this close: `GATE-EXIT=0`, `rg -c '^FAIL'` exits 1, and the 20
+battery markers map onto 90 cycle rows and 9 frozen-literal rows.

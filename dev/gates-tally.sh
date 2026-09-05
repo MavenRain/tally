@@ -15,7 +15,6 @@ command -v gtimeout > /dev/null || { echo FAIL-T0-NO-WATCHDOG; exit 1; }
 
 # 0. PASS-T0-BUILD
 dunecho build -- --root /Users/oobi/Documents/tally/vendor/tot
-echo FAIL-T0-BUILD-PLACEHOLDER-LEG2; exit 9   # leg 2 needs Stage E1's bin/tally.ml
 dunecho build -- --root /Users/oobi/Documents/tally bin/tally.exe
 echo PASS-T0-BUILD
 
@@ -205,21 +204,72 @@ rg -q 'PASS-T0-WORD-TOWER-e' /Users/oobi/Documents/tally/dev/MUTATION-LOG.md
 echo PASS-T0-WORD-TOWER
 
 # 14. PASS-T0-SPEED
-echo FAIL-T0-SPEED-PLACEHOLDER; exit 9   # Stage E2
+sst=0
+python3 -P /Users/oobi/Documents/tally/dev/timing_harness2.py \
+  "$BASE" /Users/oobi/Documents/tally/_build/default/bin/tally.exe \
+  /Users/oobi/Documents/tally/dev/corpus/corpus-a.tot "$OUT/speed" \
+  /Users/oobi/Documents/tally-m0-pin-m5/stdlib/prelude.tot \
+  /Users/oobi/Documents/tally/vendor/tot/stdlib/prelude.tot || sst=$?
+test "$sst" -eq 0        # exit 3 = missing binary or failed check, red before any number is read
+jst=0; rg -qx 'JITTER-OK' "$OUT/speed/jitter.txt" || jst=$?
+test "$jst" -eq 0 || { echo FAIL-T0-SPEED-INVALID; exit 1; }
+BASEM=$(cat "$OUT/speed/base-warm-median.txt")
+CANDM=$(cat "$OUT/speed/cand-warm-median.txt")
+test "$BASEM" -gt 0
+test "$CANDM" -le $(( BASEM * 2 ))       # integer microseconds; Q6's 2.0x threshold
+echo PASS-T0-SPEED
 
 # 15. PASS-T0-NO-EMITTER
-echo FAIL-T0-NO-EMITTER-PLACEHOLDER; exit 9   # Stage E3
+T=/Users/oobi/Documents/tally
+V=/Users/oobi/Documents/tally/vendor/tot
+G5GLOBS=(-g '*.ml' -g '*.mli' -g '*.tot' -g '*.tal' -g '*.sh' -g '*.py' -g 'dune*' -g '!**/vendor/**' -g '!**/_build/**')
+: > "$OUT/g5-hits.txt"
+: > "$OUT/g5-residual.txt"
+test "$(rg --files --no-ignore "${G5GLOBS[@]}" "$T" | wc -l)" -ge 10
+test -z "$(rg --files --no-ignore "${G5GLOBS[@]}" "$T" | rg '/vendor/|/_build/')"
+test "$(wc -l < "$T/dev/g5-deny.txt")" -eq 7
+git -C "$V" diff -M "$(cat "$T/PIN")" -- ':(exclude)_build' ':(exclude)vendor' '*.ml' '*.mli' '*.tot' '*.tal' '*.sh' '*.py' '*dune*' \
+  | rg -v '^\+\+\+ ' | rg '^\+' > "$OUT/g5-vendor-added.txt"
+test -s "$OUT/g5-vendor-added.txt"
+git -C "$V" diff --name-only -M "$(cat "$T/PIN")" -- ':(exclude)_build' ':(exclude)vendor' | rg -q '^lib/word\.ml$'
+while IFS=$'\t' read -r flag pat; do
+  case "$flag" in I) iflag=(-i);; S) iflag=();; *) exit 1;; esac
+  st=0
+  rg -n "${iflag[@]}" --no-ignore "${G5GLOBS[@]}" "$pat" "$T" >> "$OUT/g5-hits.txt" || st=$?
+  test "$st" -le 1        # exit 2 (bad path/pattern) is a gate failure, never zero hits
+  st=0
+  rg -n "${iflag[@]}" "$pat" "$OUT/g5-vendor-added.txt" >> "$OUT/g5-hits.txt" || st=$?
+  test "$st" -le 1
+done < "$T/dev/g5-deny.txt"
+sort -u "$OUT/g5-hits.txt" > "$OUT/g5-hits-sorted.txt"
+comm -23 "$OUT/g5-hits-sorted.txt" "$T/dev/g5-allowlist.txt" > "$OUT/g5-residual.txt"
+wc -l < "$T/dev/g5-allowlist.txt"        # allow-list size, printed per section 2.2
+test ! -s "$OUT/g5-residual.txt"
+echo PASS-T0-NO-EMITTER
 
 # 16. PASS-T0-NO-SURFACE-TAL
-echo FAIL-T0-NO-SURFACE-TAL-PLACEHOLDER; exit 9   # Stage E3
+test "$(fd -e ml --no-ignore . /Users/oobi/Documents/tally -E vendor -E _build \
+  | rg -v '/bin/tally\.ml$' | rg -v '/test/' | wc -l)" -eq 0
+echo PASS-T0-NO-SURFACE-TAL
 
 # 17. PASS-T0-M1-GATE-DEFINED
-echo FAIL-T0-M1-GATE-DEFINED-PLACEHOLDER; exit 9   # Stage E4
+test -x /Users/oobi/Documents/tally/dev/gates-m1-entry.sh
+rg -q 'echo PASS-T1-CITATIONS' /Users/oobi/Documents/tally/dev/gates-m1-entry.sh
+echo PASS-T0-M1-GATE-DEFINED
 
 # 18. PASS-T0-RECORD-INTACT
-echo FAIL-T0-RECORD-INTACT-PLACEHOLDER; exit 9   # Stage B step 8 + E4
+awk '/^## Ratification record/,/^---$/' \
+  /Users/oobi/Documents/solana-lang-design-verdict.md \
+  | shasum -a 256 | cut -d' ' -f1 \
+  | diff - /Users/oobi/Documents/tally/dev/verdict-record.digest
+rg -q '^## Re-pin log \(builder-appended, not ratified\)' \
+  /Users/oobi/Documents/solana-lang-design-verdict.md
+rg -q 'cumulativity.*NEVER \((RATIFY|PENDING-USER-RATIFY)' \
+  /Users/oobi/Documents/tally/dev/PARITY-LEDGER-DELTA.md
+echo PASS-T0-RECORD-INTACT
 
 # 19. PASS-T0-EXIT-RATIFIED
-echo FAIL-T0-EXIT-RATIFIED-PLACEHOLDER; exit 9   # the user's section 12 item 1 stamp
+rg -q 'M0-EXIT-SUBSTITUTION \(RATIFY [0-9]{4}-[0-9]{2}-[0-9]{2}\)' /Users/oobi/Documents/tally/dev/M0-BUILD-LOG.md
+echo PASS-T0-EXIT-RATIFIED
 
 exit 0
