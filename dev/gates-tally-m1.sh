@@ -155,18 +155,140 @@ test -f "$REFERENCE/tests/elfs/strict_header.so"
 test -f "$REFERENCE/tests/elfs/syscall_static.so"
 mark PASS-T1-SOURCES
 
-# T1-5 placeholder, Stage B
-exit 9
-# T1-6 placeholder, Stage B
-exit 9
-# T1-7 placeholder, Stage B
-exit 9
-# T1-8 placeholder, Stage B
-exit 9
-# T1-9 placeholder, Stage B
-exit 9
-# T1-10 placeholder, Stage B
-exit 9
+# T1-5. PASS-T1-BUILD
+export TOT_PRELUDE="$TALLY/vendor/tot/stdlib/prelude.tot"
+BD=$OUT/cold-build
+rm -rf "$BD"
+test ! -e "$BD"
+dune build --root "$TALLY/vendor/tot"
+dune build --root "$TALLY" --build-dir "$BD" bin/tally.exe
+test -x "$BD/default/bin/tally.exe"
+dune build --root "$TALLY" bin/tally.exe
+test -x "$TB"
+"$TB" --help > "$OUT/help.txt"
+rg -q '\bcheck\b' "$OUT/help.txt"
+rg -q '\bbuild\b' "$OUT/help.txt"
+mark PASS-T1-BUILD
+
+# T1-6. PASS-T1-WORD-SCOPE
+G1GLOBS=(-g '*.ml' -g '*.mli' -g '*.tot' -g '*.tal' -g '*.sh' -g '*.py' -g 'dune*' -g '!**/vendor/**' -g '!**/_build/**')
+test "$(wc -l < "$TALLY/dev/g5-deny.txt")" -eq 7
+test "$(wc -l < "$TALLY/dev/g1-deny.txt")" -eq 4
+test "$(wc -l < "$TALLY/dev/g1-scope.txt")" -eq 4
+SHAPE=$(rg -c '^[^\t]+\t(lib|bin|test|dev)/' "$TALLY/dev/g1-scope.txt") || SHAPE=0
+test "$SHAPE" -eq 4     # every PREFIX is tree-relative, so '/' and '' red
+test "$(wc -l < "$TALLY/dev/g5-allowlist.txt")" -eq 1
+rg -qx 'lib/target/target_params\.ml' "$TALLY/dev/g5-allowlist.txt"   # the one reasoned row, not a Cterm file
+test "$(rg --files --no-ignore "${G1GLOBS[@]}" "$TALLY" | wc -l)" -ge 10
+test -z "$(rg --files --no-ignore "${G1GLOBS[@]}" "$TALLY" | rg '/vendor/|/_build/')"
+: > "$OUT/g1-hits.txt"
+while IFS=$'\t' read -r flag pat; do
+  case "$flag" in I) iflag=(-i);; S) iflag=();; *) exit 1;; esac
+  st=0
+  rg -n "${iflag[@]}" --no-ignore "${G1GLOBS[@]}" "$pat" "$TALLY" >> "$OUT/g1-hits.txt" || st=$?
+  test "$st" -le 1        # exit 2 (bad path or pattern) is red, never zero hits
+done < "$TALLY/dev/g1-deny.txt"
+sort -u "$OUT/g1-hits.txt" > "$OUT/g1-hits-sorted.txt"
+rg -o '^[^:]+' "$OUT/g1-hits-sorted.txt" | sd -s "$TALLY/" '' | sort -u > "$OUT/g1-hit-paths.txt"
+comm -23 "$OUT/g1-hit-paths.txt" <(sort "$TALLY/dev/g5-allowlist.txt") > "$OUT/g1-path-residual.txt"
+test ! -s "$OUT/g1-path-residual.txt"
+: > "$OUT/g1-scope-residual.txt"
+: > "$OUT/g1-scope-all.txt"
+while IFS=$'\t' read -r pat prefix; do
+  st=0
+  rg -l --no-ignore "${G1GLOBS[@]}" "$pat" "$TALLY" > "$OUT/g1-scope-abs.txt" || st=$?
+  test "$st" -le 1
+  sd -s "$TALLY/" '' < "$OUT/g1-scope-abs.txt" | sort > "$OUT/g1-scope-hits.txt"
+  cat "$OUT/g1-scope-hits.txt" >> "$OUT/g1-scope-all.txt"
+  st=0
+  rg -v "^($prefix)" "$OUT/g1-scope-hits.txt" >> "$OUT/g1-scope-residual.txt" || st=$?
+  test "$st" -le 1
+done < "$TALLY/dev/g1-scope.txt"
+test "$(wc -l < "$OUT/g1-scope-all.txt")" -ge 5
+test ! -s "$OUT/g1-scope-residual.txt"
+mark PASS-T1-WORD-SCOPE
+
+# T1-7. PASS-T1-SOURCE-MANIFEST
+fd -e ml -e mli --no-ignore . "$TALLY" -E vendor -E _build -E bin -E test \
+  | sd -s "$TALLY/" '' | sort > "$OUT/m1-sources-now.txt"
+test -s "$OUT/m1-sources-now.txt"
+test -s "$TALLY/dev/m1-source-manifest.txt"
+diff "$OUT/m1-sources-now.txt" "$TALLY/dev/m1-source-manifest.txt"
+mark PASS-T1-SOURCE-MANIFEST
+
+# T1-8. PASS-T1-CTERM-FIRSTORDER
+VERIFY=(--emit-none --verify --dump-cterm)
+mkdir -p "$OUT/cterm-firstorder"
+: > "$OUT/cterm-verify.out"
+: > "$OUT/cterm-positives.txt"
+n=0
+while IFS= read -r fx; do
+  "$TB" build "${VERIFY[@]}" "$TALLY/test/fixtures/$fx" > "$OUT/cterm-firstorder/${fx%.tot}.txt" 2>&1
+  cat "$OUT/cterm-firstorder/${fx%.tot}.txt" >> "$OUT/cterm-verify.out"
+  n=$(( n + 1 ))
+  printf '%s\n' "$fx" >> "$OUT/cterm-positives.txt"
+done <<'POS'
+cterm-id.tot
+cterm-capture.tot
+cterm-nested-capture.tot
+cterm-known-call.tot
+cterm-selfrec.tot
+cterm-mutual.tot
+cterm-match-kept.tot
+cterm-word-tower.tot
+cterm-div-zero.tot
+cterm-shift-wide.tot
+POS
+test "$n" -eq 10
+test "$(rg -c '^verify: ok ' "$OUT/cterm-verify.out")" -eq 10
+for fx in cterm-known-call cterm-selfrec cterm-mutual; do
+  test "$(rg '^VERIFY-OK ' "$OUT/cterm-firstorder/$fx.txt" | rg -o 'callknown-edges=[0-9]+' | cut -d= -f2)" -ge 1
+done
+mark PASS-T1-CTERM-FIRSTORDER
+
+# T1-9. PASS-T1-CTERM-DIFF
+rm -rf "$OUT/cterm-diff"
+dune exec --root "$TALLY" test/cterm_ref.exe -- "$OUT/cterm-diff"
+test -s "$OUT/cterm-diff/interp.txt"
+test -s "$OUT/cterm-diff/pipeline.txt"
+test "$(wc -l < "$OUT/cterm-diff/interp.txt")" -eq 10
+test "$(wc -l < "$OUT/cterm-diff/pipeline.txt")" -eq 10
+diff "$OUT/cterm-diff/interp.txt" "$OUT/cterm-diff/pipeline.txt"
+sort -u "$OUT/cterm-diff/constructors.txt" > "$OUT/cterm-diff/constructors-sorted.txt"
+test "$(wc -l < "$OUT/cterm-diff/constructors-sorted.txt")" -eq 8
+for ctor in EVar ELam EApp ELet EGlobal EErased EMatch ELit; do
+  rg -qx "$ctor" "$OUT/cterm-diff/constructors-sorted.txt"
+done
+mark PASS-T1-CTERM-DIFF
+
+# T1-10. PASS-T1-CTERM-REJECTS
+: > "$OUT/cterm-rej-ctors.txt"
+n=0
+while IFS= read -r fx; do
+  st=0
+  LIMIT=()
+  if test "$fx" = cterm-arena-over.tot; then LIMIT=(--arena-limit 0); fi
+  "$TB" build --emit-none "${LIMIT[@]}" "$TALLY/test/fixtures/$fx" > "$OUT/cterm-rej.out" 2>&1 || st=$?
+  test "$st" -eq 2        # RUL-R6-1: a typed Cerror.t rejection
+  rg -o 'Cerror\.[A-Z][A-Za-z0-9_]*' "$OUT/cterm-rej.out" | head -1 >> "$OUT/cterm-rej-ctors.txt"
+  n=$(( n + 1 ))
+done <<'NEG'
+cterm-arena-over.tot
+cterm-io-neg.tot
+cterm-string-neg.tot
+cterm-nat-neg.tot
+NEG
+test "$n" -eq 4
+test "$(wc -l < "$OUT/cterm-rej-ctors.txt")" -eq 4
+test "$(sort -u "$OUT/cterm-rej-ctors.txt" | wc -l)" -eq 4
+p=0
+while IFS= read -r fx; do
+  "$TB" build --emit-none "$TALLY/test/fixtures/$fx" > /dev/null 2>&1
+  p=$(( p + 1 ))
+done < <(rg -o '^cterm-[a-z-]+\.tot$' "$OUT/cterm-positives.txt")
+test "$p" -eq 10
+mark PASS-T1-CTERM-REJECTS
+
 # T1-11 placeholder, Stage C
 exit 9
 # T1-12 placeholder, Stage C

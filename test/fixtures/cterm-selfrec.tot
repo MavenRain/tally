@@ -1,0 +1,7 @@
+data Steps : Type 0 := | stop : Steps | next : Steps -> Steps
+def rec count : Steps -> U64 := fun steps =>
+  match steps with
+  | stop => 0u64
+  | next rest => u64Add (count rest) 1u64
+  end
+def main : U64 := count (next (next stop))

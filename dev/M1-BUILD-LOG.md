@@ -178,3 +178,122 @@ Repairs outside the repository: `tally-m1/stage-a-validation/run-mutations.py`,
 `tally-m1/stage-a-validation/README.md`, plus one new evidence file,
 `tally-m1/stage-a-validation/restore-cell-provenance.log`. No existing evidence
 file was overwritten, no gate text changed, and `M1-PLAN.md` was not edited.
+
+## Stage B: first-order compiler and battery handover, 2026-09-06
+
+Stage B builds on committed Stage A `ca95f754b99f048cbeed578ce5eaea834508b617`.
+The kernel PIN, vendored gitlink, frozen M0 battery and seven-row M0 deny
+table remain byte-identical. The citation entry check passed for all 15
+Stage B rows; this stage discharges no citation obligation.
+
+The nine module pairs in `lib/cterm` implement reachable-global collection,
+ANF, unary closure conversion, dense tags, explicit continuations, layout,
+source declarations and independent structural verification. Known non-tail
+calls retain native edges. Known tail calls dispatch through closure tags;
+multi-argument tails use cached unary adapters that copy the target body,
+so they introduce no native wrapper call. A two-argument tail-recursive
+control returns `3u64` with zero native edges and zero continuation pushes.
+
+`tally build` supports the planned inspection and execution flags, plus an
+explicit `--arena-limit` argument. `check` retains its original implementation.
+The build path preserves the existing bootstrap and type-checking item fold,
+then continues from checked kernel definitions rather than executing source
+effects. Its library depends only on `tot.kernel`. The reference machine
+evaluates final Cterm blocks independently of the existing interpreter; only
+canonical kernel word operations and result rendering are shared. Compiler
+construction never calls the interpreter.
+
+The declaration reader preserves source positions and quoted multiline
+data. Duplicate declarations, malformed names and decimal overflow return
+typed errors. The default height is 1 and the target-bound map is empty.
+Stage E still owns undeclared call-target rejection. Layout compares no
+target limit: an optional caller limit is separate from future target checks.
+
+Review repaired tail-call lowering, an executable-directory lookup failure
+in the differential runner, unsupported hand-constructed primitive IR, and
+incorrect constructor facts when verifying a mixed-arity match. The verifier
+checks closed slot flow, dense and bounded tags, arities, captures, primitive
+admissibility, impossible-constructor defaults, and string-blob contents.
+
+The following deviations are recorded inline here and in the numeric table.
+D129 selects the normative 18-row library manifest. D130 shares the test
+reference source through a generated binary module. D131 omits the upstream
+IO-only main epilogue on build. D132 resolves the two verification print
+forms and strengthens content checks. D133 supplies the missing gate prelude,
+help and freshness checks. D134 and D135 repair scope-gate contradictions.
+D136 exposes the caller arena limit. D137 records the available recursion
+fixture syntax. D138 and D139 make layout and slot representation explicit.
+D140 records the transient application carrier and its mandatory rejection.
+D141 records the source declaration extraction API. D142 maps outdated
+mutation instructions to the actual gate consumers without claiming compiler
+source mutations. D143 records the observed pre-change timing failures.
+
+### Validation
+
+The complete live M1 battery printed exactly 11 distinct markers, T1-0
+through T1-10, and exited 9 at the unchanged Stage C placeholder. The
+frozen replay returned all 20 distinct M0 markers with no FAIL rows; its
+inherited vendor suite returned 398 PASS rows. The final replay timing
+sample was valid. Both cold and default Stage B builds completed, with
+the library manifest matching all 18 source paths.
+
+All ten planned differential fixtures agreed, with exact coverage of all
+eight Eterm constructors. All four negative fixtures returned their own
+typed errors. Ten additional differential controls passed against the
+final compiler, including partial application, overapplication, nested
+captures, unreachable globals, value reuse and unary/multi-argument tails.
+The 62 layout/verifier assertions, 15 declaration checks and 27 CLI/harness
+checks passed. Unsupported hand-built primitive IR rejects, while the
+previously rejected mixed-arity match now passes. The CLI/harness report
+predates the final verifier refinement; the complete battery and additional
+ten differential cases ran after that refinement.
+
+Eleven source-file scope/manifest mutations and eleven pipeline gate
+controls rejected at their intended checks and returned green after
+restoration. The latter use saved real output or command doubles, not
+compiler source changes. Their separate EMatch membership control also
+reaches the membership assertion. All recorded restores were checked.
+The frozen M0 source and both immutable pin values remain unchanged.
+
+Failed observations retained: the initial pre-change live battery failed
+DIV-MEMO elapsed time; its retry failed jitter validity; and the first
+workspace Stage B run encountered a concurrent Dune build lock. Final
+builds were serialized. The complete final replay and all implemented
+Stage B gates passed without changing any inherited timing criterion.
+
+Evidence lives in `tally-m1/stage-b-validation/`, copied from the workspace
+checks with build directories and generated binaries excluded. Raw failed
+runs remain beside successful runs. `stage-b-commit-msg.txt` is outside the
+repository. The mutation table records observed failure and restoration
+statuses; command doubles and assertion replays are explicitly distinguished
+from source-file mutations.
+
+### Deviations
+
+| D-id | The plan claim | What was found or done, with evidence |
+|---|---|---|
+| D129 | The manifest prose includes every non-vendored source, but T1-7 excludes bin and test. | Follow T1-7 and commit exactly 18 library rows, one for each of the nine module pairs. The gate diffs both directions; extra-source and missing-row mutations both reject. |
+| D130 | The CLI runs the reference machine kept in the test executable, without another library file. | `bin/dune` generates `cterm_reference.ml` from `test/cterm_ref.ml`. The shared source has an executable-name guard; its library functions do not run the harness. No generated file is tracked and the compiler library keeps only its kernel dependency. |
+| D131 | The build path can reuse `Run.script` wholesale. | Its upstream main epilogue rejects an ordinary word-valued main even with execution disabled. Build retains Lexer, Parser and the `Run.item ~exec:false` fold, then compiles the checked globals without the IO-only epilogue. The check implementation is unchanged. |
+| D132 | Step 5 requires `VERIFY-OK`, while normative T1-8 matches `verify: ok ` and omits the prose's edge checks. | `--verify` emits the latter line with computed counts; `--dump-cterm` emits `VERIFY-OK` plus layout. T1-8 passes both and asserts real edges on the three named fixtures. T1-9 asserts the exact eight constructor names, including EMatch, rather than accepting any eight strings. |
+| D133 | The normative T1-5 body lacks the prose's help/freshness checks and sets no tally prelude path. | Add explicit vendored TOT_PRELUDE, cold-directory absence, and help checks for both check and build. Cold and default builds pass. Both truncated-help controls and the stale-directory control reject and restore green. |
+| D134 | T1-6 requires a nonempty deny-hit set before Stage C creates the only allowed target module. | Empty Stage B deny hits are valid. Remove that contradictory floor while retaining source and scope floors, exact table shapes, actual pattern execution, and residual rejection. Deny-content and forbidden-constant source mutations prove the loop still rejects. |
+| D135 | The four-row scope inventory omits the bin dune file it changes, and `rg -v ... || true` also accepts malformed filter patterns. | Add `bin/dune` to the existing Cterm row, still four rows, and accept only search statuses 0 and 1. Bad pattern and bad filter controls both fail. No general directory is admitted. |
+| D136 | Section 8.5.2 gives the arena negative a caller-supplied ceiling, but the CLI and gate supply none. | Add `--arena-limit N` and pass 0 only to the arena negative in T1-10. Its nonzero allocation returns `Cerr_arena_over`; ordinary builds use no ceiling. This introduces no target number or target-parameter read. |
+| D137 | The fixture roster requests mutual recursion through separate first-order definitions. | The pinned surface has neither a mutual-definition block nor forward global references. `cterm-mutual.tot` uses a two-state structural recursive function instead; it retains non-tail native edges and matches the interpreter. It does not prove a two-global cycle. |
+| D138 | The design multiplies allocation by an unspecified trampoline depth bound, while the stage supplies no such bound. | `arena_words` is a static one-visit footprint over code and continuation bodies, taking the largest switch arm. It does not bound dynamic recursion or repeated execution. Arithmetic overflow is checked, and caller ceiling equality and exceedance have separate tests. |
+| D139 | The design renumbers closure inputs to fixed slots and represents a field by an integer alone. | Each code and continuation carries explicit parameter/capture slot maps; captures remain sorted by original slot, and layout computes the actual high-water slot. Fields privately carry index and constructor arity, so creation and verification reject out-of-range projections. Future emission must honor these maps. |
+| D140 | The Cterm sketch has no intermediate unknown-call binding. | Defun temporarily emits `RApply`; Tramp eliminates it, and both Verify and the reference machine reject any survivor. This represents non-tail unknown applications before continuation splitting without permitting them in a validated program. |
+| D141 | Decl.parse reads a block, but the source syntax and block extraction are unspecified. | Raw `entry-height` and `depth-bound` lines are recognized outside quoted strings and replaced by equal-length spaces. `Decl.source` returns the stripped source and parsed declarations; `Decl.parse` remains a standalone strict block reader. Fifteen parser controls include quote escapes and multiline data. |
+| D142 | Several mutation rows refer to older per-fixture driver files or a POS array absent from normative T1-9. | Eleven mutations change isolated scope/manifest source files. Eleven further controls replay the current exact assertions or use a driver double, with a supplemental EMatch membership check. They establish failure reachability and byte restoration, and are not described as compiler source mutations. |
+| D143 | Stage B entry expects a complete new live M0 green. | The first pre-change run failed inherited DIV-MEMO timing at exit 0 and 24 seconds. The retry passed the functional word tower but failed JITTER-NOISY; its ratio was 1.079, below the unchanged 2.0 ceiling. Preserve both runs and their raw artifacts. No timing threshold, watchdog, sample count or frozen source was modified. |
+
+### Handoff
+
+All Stage B repository changes are prepared for staging in one commit.
+T1-11 through T1-21 remain exit-9 placeholders. Stage C starts after the
+user commits Stage B and owns target parameters, emission, and target limits.
+This is the first compiler stage for which live M0 entries 15 and 16 are
+expected red: Cterm names violate the retired word fence and library sources
+violate the former zero-source count. Both reds were observed separately.
+T1-1 is the frozen M0 fence from this stage onward. No commit is created here.

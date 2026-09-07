@@ -1,3 +1,8 @@
 (executable
  (name tally)
- (libraries tot.kernel tot.interp tot.surface))
+ (libraries tally_cterm tot.kernel tot.interp tot.surface))
+
+(rule
+ (target cterm_reference.ml)
+ (deps ../test/cterm_ref.ml)
+ (action (copy %{deps} %{target})))

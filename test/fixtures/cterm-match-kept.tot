@@ -1,0 +1,6 @@
+data Payload : Type 0 :=
+  | payload : (0 proof : Eq U64 1u64 1u64) -> U64 -> U64 -> Payload
+def main : U64 :=
+  match payload (refl U64 1u64) 9u64 2u64 with
+  | payload proof first second => u64Sub first second
+  end

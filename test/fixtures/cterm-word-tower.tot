@@ -1,0 +1,16 @@
+def main : U64 :=
+  let add : U64 := u64Add 9u64 3u64 in
+  let sub : U64 := u64Sub add 2u64 in
+  let mul : U64 := u64Mul sub 3u64 in
+  let masked : U64 := u64And mul 15u64 in
+  let joined : U64 := u64Or masked 16u64 in
+  let toggled : U64 := u64Xor joined 3u64 in
+  let inverted : U64 := u64Not toggled in
+  let left : U64 := u64Shl inverted 2u32 in
+  let right : U64 := u64Shr left 2u32 in
+  let divided : U64 := u64Div right 3u64 in
+  let remainder : U64 := u64Mod divided 17u64 in
+  let equal : Bool := u64Eq remainder 0u64 in
+  let ordered : Ordering := u64Compare remainder 8u64 in
+  let rendered : String := u64ToString remainder in
+  remainder

@@ -1,0 +1,4 @@
+def main : U64 :=
+  let captured : U64 := 11u64 in
+  let addCaptured : U64 -> U64 := fun x => u64Add captured x in
+  addCaptured 5u64

@@ -1,0 +1,3 @@
+(executable
+ (name cterm_ref)
+ (libraries tally_cterm tot.kernel tot.interp tot.surface))

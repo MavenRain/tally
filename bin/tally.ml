@@ -6,8 +6,7 @@
     tot's, and [Tot_surface.Source.read] classifies a path without ever
     reading its suffix.
 
-    M0 delivers the checker only, so `run`, `prims` and every other argv
-    shape print the usage line on stderr and exit 2.
+    The build subcommand adds the middle end and reference execution.
 
     The check path mirrors `vendor/tot/bin/tot.ml` at vendor HEAD
     de61f4e (Stage E ruling (c) re-cite; plan 3300's `23,37,92-107` are
@@ -33,7 +32,11 @@ let default_opts : opts = { no_prelude = false; no_axioms = false; serror_exit =
 
 (** The one usage line.  It is printed on STDERR: stdout carries only a
     rendered decision (tot's B4 channel rule). *)
-let usage : string = "usage: tally check [--no-prelude] [--no-axioms] [--serror-exit N] FILE"
+let usage : string =
+  "usage: tally check [--no-prelude] [--no-axioms] [--serror-exit N] FILE\n\
+   \       tally build [--emit-none] [--verify] [--dump-cterm] [--run-cterm]\n\
+   \                   [--run-interp] [--dump-eterm-ctors] [--arena-limit N]\n\
+   \                   [--no-prelude] [--no-axioms] FILE"
 
 (** Consume leading flags; the first non-flag argument ends the scan, and
     a leading "--" that is not a known flag is an error, so a typo can
@@ -129,10 +132,81 @@ let check (rest : string list) : int =
              prerr_endline usage;
              2)
 
-(** `check` is the whole M0 surface of this driver. *)
+type build_opts = {
+  no_prelude : bool;
+  no_axioms : bool;
+  verify : bool;
+  dump : bool;
+  run_cterm : bool;
+  run_interp : bool;
+  dump_constructors : bool;
+  arena_limit : int option;
+}
+
+let default_build = {
+  no_prelude = false; no_axioms = false; verify = false; dump = false;
+  run_cterm = false; run_interp = false; dump_constructors = false; arena_limit = None;
+}
+
+let rec build_flags options = function
+  | "--emit-none" :: rest -> build_flags options rest
+  | "--verify" :: rest -> build_flags { options with verify = true } rest
+  | "--dump-cterm" :: rest -> build_flags { options with dump = true } rest
+  | "--run-cterm" :: rest -> build_flags { options with run_cterm = true } rest
+  | "--run-interp" :: rest -> build_flags { options with run_interp = true } rest
+  | "--dump-eterm-ctors" :: rest -> build_flags { options with dump_constructors = true } rest
+  | "--no-prelude" :: rest -> build_flags { options with no_prelude = true } rest
+  | "--no-axioms" :: rest -> build_flags { options with no_axioms = true } rest
+  | "--arena-limit" :: argument :: rest ->
+      int_of_string_opt argument
+      |> Option.fold ~none:(Error "--arena-limit expects a nonnegative integer")
+           ~some:(fun value ->
+             if value < 0 then Error "--arena-limit expects a nonnegative integer"
+             else build_flags { options with arena_limit = Some value } rest)
+  | [ "--arena-limit" ] -> Error "--arena-limit expects an integer argument"
+  | argument :: _ when String.starts_with ~prefix:"--" argument ->
+      Error ("unknown flag: " ^ argument)
+  | [ path ] -> Ok (options, path)
+  | [] | _ :: _ :: _ -> Error usage
+
+let build arguments =
+  let open Cterm_reference in
+  build_flags default_build arguments
+  |> Result.fold
+       ~error:(fun text -> prerr_endline text; 2)
+       ~ok:(fun (options, path) ->
+         let result =
+           let* prepared = load ~no_prelude:options.no_prelude ~no_axioms:options.no_axioms path in
+           let* program = pipeline ?arena_limit:options.arena_limit prepared in
+           if options.verify then (
+             let counts = Tally_cterm.Verify.summary program in
+             Printf.printf "verify: ok dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
+               counts.dense counts.konts counts.switch_defaults counts.callknown_edges);
+           if options.dump then (
+             let counts = Tally_cterm.Verify.summary program in
+             Printf.printf "VERIFY-OK dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
+               counts.dense counts.konts counts.switch_defaults counts.callknown_edges;
+             let slots = Array.to_seq program.codes
+               |> Seq.fold_left (fun largest (code : Tally_cterm.Cterm.code) ->
+                    max largest code.frame_slots) 0 in
+             Printf.printf "cterm: frame-slots=%d arena-words=%d strings=%d\n"
+               slots program.arena_words (List.length program.strings));
+           if options.dump_constructors then
+             List.iter print_endline (List.sort_uniq String.compare (constructors prepared));
+           let* () = if options.run_interp then interp prepared |> Result.map print_endline else Ok () in
+           if options.run_cterm then run program |> Result.map print_endline else Ok ()
+         in
+         Result.fold ~ok:(fun () -> 0)
+           ~error:(fun error ->
+             prerr_endline (message error);
+             match error with Frontend _ -> 1 | Middle _ | Runtime _ -> 2)
+           result)
+
 let () =
   match Array.to_list Sys.argv with
   | _exe :: "check" :: rest -> Stdlib.exit (check rest)
+  | _exe :: "build" :: rest -> Stdlib.exit (build rest)
+  | [ _exe; "--help" ] -> print_endline usage
   | [] | [ _ ] | _ :: _ :: _ ->
       prerr_endline usage;
       Stdlib.exit 2

@@ -1,0 +1,4 @@
+S	MAX_INSTRUCTION|200000|200_000|32768|262144|SIMD-?0268|\b4096\b|\b1232\b
+S	Quantity\.One|usage.vector
+I	compute.unit|\bcu\b.*budget|certificate
+S	natOfU64|u64OfNat|intOfU64|u64OfInt

@@ -1,0 +1,1 @@
+def main : U64 := u64Add (u64Shl 3u64 64u32) (u64Shr 7u64 65u32)

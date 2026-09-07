@@ -1,0 +1,2 @@
+def increment : U64 -> U64 := fun x => u64Add x 1u64
+def main : U64 := u64Add (increment 8u64) 2u64

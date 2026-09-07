@@ -1,0 +1,12 @@
+-- The pinned surface has no mutually recursive declaration group.
+-- Two alternating states share one structural recursion worker.
+data Steps : Type 0 := | stop : Steps | next : Steps -> Steps
+def rec alternate : Steps -> Bool -> U64 := fun steps odd =>
+  match steps with
+  | stop => 0u64
+  | next rest => match odd with
+    | true => u64Add (alternate rest false) 10u64
+    | false => u64Add (alternate rest true) 1u64
+    end
+  end
+def main : U64 := alternate (next (next (next stop))) false

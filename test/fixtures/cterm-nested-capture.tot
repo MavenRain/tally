@@ -1,0 +1,7 @@
+def main : U64 :=
+  let first : U64 := 13u64 in
+  let second : U64 := 4u64 in
+  let outer : U64 -> U64 -> U64 := fun x => fun y =>
+    u64Add (u64Sub second first) (u64Add x y) in
+  let inner : U64 -> U64 := outer 2u64 in
+  u64Add (inner 3u64) 1u64

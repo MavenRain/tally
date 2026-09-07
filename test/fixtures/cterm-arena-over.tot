@@ -1,0 +1,3 @@
+-- T1-10 supplies a caller allocation ceiling of zero words.
+data Box : Type 0 := | box : U64 -> Box
+def main : Box := box 7u64
