@@ -36,7 +36,8 @@ let usage : string =
   "usage: tally check [--no-prelude] [--no-axioms] [--serror-exit N] FILE\n\
    \       tally build [--emit-none] [--verify] [--dump-cterm] [--run-cterm]\n\
    \                   [--run-interp] [--dump-eterm-ctors] [--arena-limit N]\n\
-   \                   [--no-prelude] [--no-axioms] FILE"
+   \                   [--no-prelude] [--no-axioms] [-o IMAGE] [--ledger FILE] FILE\n\
+   \       tally build [--ledger FILE] --print-syscall-keys"
 
 (** Consume leading flags; the first non-flag argument ends the scan, and
     a leading "--" that is not a known flag is an error, so a typo can
@@ -141,15 +142,28 @@ type build_opts = {
   run_interp : bool;
   dump_constructors : bool;
   arena_limit : int option;
+  emit : bool;
+  output : string option;
+  ledger : string option;
+  print_keys : bool;
 }
 
 let default_build = {
   no_prelude = false; no_axioms = false; verify = false; dump = false;
   run_cterm = false; run_interp = false; dump_constructors = false; arena_limit = None;
+  emit = true; output = None; ledger = None; print_keys = false;
 }
 
 let rec build_flags options = function
-  | "--emit-none" :: rest -> build_flags options rest
+  | "--emit-none" :: rest -> build_flags { options with emit = false } rest
+  | "-o" :: path :: rest when not (String.starts_with ~prefix:"-" path) ->
+      build_flags { options with output = Some path } rest
+  | "--ledger" :: path :: rest when not (String.starts_with ~prefix:"-" path) ->
+      build_flags { options with ledger = Some path } rest
+  | "--print-syscall-keys" :: rest -> build_flags { options with print_keys = true } rest
+  (* A following flag is never the path: consuming it would name an artifact
+     after the option the user meant to pass. *)
+  | "-o" :: _ | "--ledger" :: _ -> Error "output and ledger options require a path"
   | "--verify" :: rest -> build_flags { options with verify = true } rest
   | "--dump-cterm" :: rest -> build_flags { options with dump = true } rest
   | "--run-cterm" :: rest -> build_flags { options with run_cterm = true } rest
@@ -166,8 +180,141 @@ let rec build_flags options = function
   | [ "--arena-limit" ] -> Error "--arena-limit expects an integer argument"
   | argument :: _ when String.starts_with ~prefix:"--" argument ->
       Error ("unknown flag: " ^ argument)
-  | [ path ] -> Ok (options, path)
-  | [] | _ :: _ :: _ -> Error usage
+  | [ path ] when not options.print_keys -> Ok (options, Some path)
+  | [] when options.print_keys -> Ok (options, None)
+  | [] | [ _ ] | _ :: _ :: _ -> Error usage
+
+let ledger_path options =
+  Option.value options.ledger ~default:(
+    Filename.concat
+      (Filename.dirname (Filename.dirname (Filename.dirname (Filename.dirname Sys.executable_name))))
+      "dev/CITATION-LEDGER.md")
+
+let target_params options =
+  let open Cterm_reference in
+  let open Tally_target in
+  let* source = Tot_surface.Source.read (ledger_path options)
+    |> Result.map_error (fun error -> Runtime (Tot_surface.Source.message error)) in
+  let* ledger = Citation_ledger.parse source
+    |> Result.map_error (fun _ -> Runtime "malformed citation ledger") in
+  Target_params.of_ledger ledger "sbpf-v3"
+  |> Result.map_error (function
+       | Target_params.Row_unverified row -> Runtime ("Row_unverified " ^ row)
+       | Target_params.Unknown_target target -> Runtime ("Unknown_target " ^ target))
+
+(** Target primitive names are seeded only for emission. The host primitive
+    carrier for solLog never reaches a host evaluator on this path. *)
+let load_target options path =
+  let open Cterm_reference in
+  let open Tot_kernel in
+  let policy = { Tot_surface.Run.default_policy with no_axioms = options.no_axioms } in
+  let* state =
+    if options.no_prelude then Ok Tot_surface.Run.initial
+    else
+      let* source = Tot_surface.Bootstrap.prelude_source ()
+        |> Result.map_error (fun (path, error) ->
+          Frontend ("prelude: " ^ path ^ ": " ^ Tot_surface.Source.message error)) in
+      surface (Tot_surface.Bootstrap.cached_state_of_src source) in
+  let signed = List.concat_map (fun (width, name) ->
+    let signature = name ^ " -> " ^ name ^ " -> " ^ name in
+    let div = Prim.Word_div (width, Word.Signed) in
+    let rem = Prim.Word_mod (width, Word.Signed) in
+    [Prim.name div, signature, div; Prim.name rem, signature, rem])
+    [Word.W8, "I8"; Word.W16, "I16"; Word.W32, "I32"; Word.W64, "I64"] in
+  let primitives = if options.no_prelude then [] else
+    ("solLog", "String -> IO Unit", Prim.Print_line) :: signed in
+  let* state = surface (Tot_surface.Bootstrap.seed_prims state primitives) in
+  elaborate ~policy ~st:state path
+
+let remove_temporary path =
+  try Sys.remove path with Sys_error _ -> ()
+
+let prepare_artifact path content =
+  try
+    let temporary = Filename.temp_file ~temp_dir:(Filename.dirname path) ".tally-" ".tmp" in
+    (try
+       Out_channel.with_open_bin temporary (fun channel -> Out_channel.output_string channel content);
+       Ok temporary
+     with Sys_error error ->
+       remove_temporary temporary;
+       Error (Cterm_reference.Runtime (path ^ ": " ^ error)))
+  with Sys_error error -> Error (Cterm_reference.Runtime (path ^ ": " ^ error))
+
+let write_artifacts output image manifest =
+  let open Cterm_reference in
+  let* image_temporary = prepare_artifact output image in
+  let prepared = prepare_artifact (output ^ ".manifest") manifest in
+  let result = Result.bind prepared (fun manifest_temporary ->
+    let published =
+      try
+        Sys.rename image_temporary output;
+        Sys.rename manifest_temporary (output ^ ".manifest");
+        Ok ()
+      with Sys_error error -> Error (Runtime (output ^ ": " ^ error)) in
+    remove_temporary manifest_temporary;
+    published) in
+  remove_temporary image_temporary;
+  result
+
+type file_identity = Existing of int * int | New of string
+
+let file_identity path =
+  try
+    let stat = Unix.stat path in
+    match stat.Unix.st_kind with
+    | Unix.S_REG -> Ok (Existing (stat.Unix.st_dev, stat.Unix.st_ino))
+    | Unix.S_DIR | Unix.S_CHR | Unix.S_BLK | Unix.S_LNK | Unix.S_FIFO | Unix.S_SOCK ->
+        Error (Cterm_reference.Runtime (path ^ ": expected a regular file"))
+  with
+  | Unix.Unix_error (Unix.ENOENT, _, _) ->
+      (try Ok (New (Filename.concat (Unix.realpath (Filename.dirname path)) (Filename.basename path)))
+       with Unix.Unix_error (error, _, _) ->
+         Error (Cterm_reference.Runtime (path ^ ": " ^ Unix.error_message error)))
+  | Unix.Unix_error (error, _, _) ->
+      Error (Cterm_reference.Runtime (path ^ ": " ^ Unix.error_message error))
+
+let check_destinations ~source ~ledger output =
+  let open Cterm_reference in
+  let* source = file_identity source in
+  let* ledger = file_identity ledger in
+  let* image = file_identity output in
+  let* manifest = file_identity (output ^ ".manifest") in
+  if image = source || image = ledger || manifest = source || manifest = ledger || image = manifest then
+    Error (Runtime "image and manifest must be distinct from the source, ledger, and each other")
+  else Ok ()
+
+let emit_program options source program =
+  let open Cterm_reference in
+  let open Tally_emit in
+  let emitted result = Result.map_error (fun error -> Runtime (Emit_error.to_string error)) result in
+  let* params = target_params options in
+  let* selected = emitted (Select.program params program) in
+  let* labels = emitted (Link.labels selected.instructions) in
+  let* instructions = emitted (Link.resolve selected.instructions) in
+  let count = List.length instructions in
+  let* starts = List.fold_left (fun result (name, label, frame_bytes) ->
+    let* found = result in
+    let* start = List.assoc_opt label labels
+      |> Option.to_result ~none:(Runtime ("missing function label: " ^ label)) in
+    Ok ((name, start, frame_bytes) :: found)) (Ok []) selected.functions in
+  let starts = List.sort (fun (_, left, _) (_, right, _) -> compare left right) starts in
+  let rec ranges = function
+    | [] -> []
+    | (name, start, frame_bytes) :: rest ->
+        let stop = match rest with [] -> count | (_, next, _) :: _ -> next in
+        Manifest.{ name; slot_start = start; slot_count = stop - start; frame_bytes } :: ranges rest in
+  let functions = ranges starts in
+  let symbols = List.map (fun (fn : Manifest.fn) -> fn.name, fn.slot_start, fn.slot_count) functions in
+  let* entry = emitted (Entry.select ~name:"main" symbols) in
+  let* code = emitted (Encode.encode params instructions) in
+  let* image = emitted (Image.build params ~entry ~functions:symbols ~code ~rodata:selected.rodata) in
+  let output = Option.value options.output ~default:(Filename.remove_extension (Filename.basename source) ^ ".so") in
+  let* () = check_destinations ~source ~ledger:(ledger_path options) output in
+    let manifest = Manifest.render ~functions ~instruction_count:count ~image_bytes:(Bytes.length image) in
+    let* () = write_artifacts output (Bytes.to_string image) manifest in
+    Printf.printf "build: wrote %s instructions=%d image-bytes=%d frame-reserve=%d\n"
+      output count (Bytes.length image) Frame.reserve;
+    Ok ()
 
 let build arguments =
   let open Cterm_reference in
@@ -176,25 +323,50 @@ let build arguments =
        ~error:(fun text -> prerr_endline text; 2)
        ~ok:(fun (options, path) ->
          let result =
-           let* prepared = load ~no_prelude:options.no_prelude ~no_axioms:options.no_axioms path in
+           if options.print_keys then
+             let* params = target_params options in
+             let table = Tally_target.Syscall_table.of_params params in
+             List.fold_left (fun result name ->
+               let* () = result in
+               let* key = Tally_target.Syscall_table.key table name
+                 |> Result.map_error (function Tally_target.Syscall_table.Unknown_syscall name -> Runtime ("Unknown_syscall " ^ name)) in
+               Printf.printf "%s %lu\n" name key; Ok ()) (Ok ())
+               (Tally_target.Syscall_table.names table)
+           else
+           let* path = path |> Option.to_result ~none:(Runtime "missing source path") in
+           let* () = if options.emit && (options.run_interp || options.run_cterm) then
+             Error (Runtime "reference execution requires --emit-none") else Ok () in
+           let* prepared = if options.emit then load_target options path
+             else load ~no_prelude:options.no_prelude ~no_axioms:options.no_axioms path in
            let* program = pipeline ?arena_limit:options.arena_limit prepared in
-           if options.verify then (
-             let counts = Tally_cterm.Verify.summary program in
-             Printf.printf "verify: ok dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
-               counts.dense counts.konts counts.switch_defaults counts.callknown_edges);
-           if options.dump then (
-             let counts = Tally_cterm.Verify.summary program in
-             Printf.printf "VERIFY-OK dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
-               counts.dense counts.konts counts.switch_defaults counts.callknown_edges;
-             let slots = Array.to_seq program.codes
-               |> Seq.fold_left (fun largest (code : Tally_cterm.Cterm.code) ->
-                    max largest code.frame_slots) 0 in
-             Printf.printf "cterm: frame-slots=%d arena-words=%d strings=%d\n"
-               slots program.arena_words (List.length program.strings));
+           (* Both reporting flags run the verifier themselves: a counter
+              alone reports no verified fact. *)
+           let* () =
+             if options.verify then (
+               let* () = middle (Tally_cterm.Verify.program program) in
+               let counts = Tally_cterm.Verify.summary program in
+               Printf.printf "verify: ok dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
+                 counts.dense counts.konts counts.switch_defaults counts.callknown_edges;
+               Ok ())
+             else Ok () in
+           let* () =
+             if options.dump then (
+               let* () = middle (Tally_cterm.Verify.program program) in
+               let counts = Tally_cterm.Verify.summary program in
+               Printf.printf "VERIFY-OK dense=%d konts=%d switch-defaults=%d callknown-edges=%d\n"
+                 counts.dense counts.konts counts.switch_defaults counts.callknown_edges;
+               let slots = Array.to_seq program.codes
+                 |> Seq.fold_left (fun largest (code : Tally_cterm.Cterm.code) ->
+                      max largest code.frame_slots) 0 in
+               Printf.printf "cterm: frame-slots=%d arena-words=%d strings=%d\n"
+                 slots program.arena_words (List.length program.strings);
+               Ok ())
+             else Ok () in
            if options.dump_constructors then
              List.iter print_endline (List.sort_uniq String.compare (constructors prepared));
            let* () = if options.run_interp then interp prepared |> Result.map print_endline else Ok () in
-           if options.run_cterm then run program |> Result.map print_endline else Ok ()
+           let* () = if options.run_cterm then run program |> Result.map print_endline else Ok () in
+           if options.emit then emit_program options path program else Ok ()
          in
          Result.fold ~ok:(fun () -> 0)
            ~error:(fun error ->
@@ -206,7 +378,6 @@ let () =
   match Array.to_list Sys.argv with
   | _exe :: "check" :: rest -> Stdlib.exit (check rest)
   | _exe :: "build" :: rest -> Stdlib.exit (build rest)
-  | [ _exe; "--help" ] -> print_endline usage
   | [] | [ _ ] | _ :: _ :: _ ->
       prerr_endline usage;
       Stdlib.exit 2

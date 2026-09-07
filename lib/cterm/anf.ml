@@ -5,7 +5,8 @@ type rhs = Atom of atom | Apply of atom * atom list | Lambda of Cterm.slot * blo
 and block = Return of atom | Let of Cterm.slot * rhs * block
   | Switch of atom * (string * Cterm.slot list * block) list
 type definition = { name : string; parameters : Cterm.slot list; body : block }
-type symbol = Defined of int | Constructor of int | Primitive of Prim.t | Erased_global
+type symbol = Defined of int | Constructor of int | Primitive of Prim.t
+  | Intrinsic of Cterm.Syscall.t | Erased_global
 type t = { root : string; definitions : definition list; symbols : (string * symbol) list }
 
 let prim_allowed name prim =
@@ -40,7 +41,7 @@ let rec arity = function
 let normalize name term =
   let counter = ref 0 in
   let fresh () =
-    if !counter = max_int then Error (Cerror.Cerr_arena_over (Cerror.diagnostic name "local index overflow")) else
+    if !counter = max_int then Error (Cerror.Cerr_slot_overflow (Cerror.diagnostic name "local index overflow")) else
     let* s = Cterm.slot !counter |> Option.to_result ~none:(Cerror.Cerr_open_term (Cerror.diagnostic name "negative local")) in
     incr counter; Ok s
   in
@@ -103,8 +104,12 @@ let program globals ~root =
             if String.equal c.ind "Nat" then Error (Cerror.Cerr_unary_numeral (Cerror.diagnostic name "unary runtime numeral")) else
             let kept = List.fold_left (fun n (q, _, _) -> match q with Quantity.Zero -> n | Quantity.Many -> n + 1) 0 c.args in
             collect seen definitions (symbols @ [name, Constructor kept]) rest
-        | Global.Prim p -> let* () = prim_allowed name p.prim in
-            collect seen definitions (symbols @ [name, Primitive p.prim]) rest
+        | Global.Prim p ->
+            if String.equal name "solLog" && p.prim = Prim.Print_line then
+              collect seen definitions (symbols @ [name, Intrinsic Cterm.Syscall.Sol_log]) rest
+            else
+              let* () = prim_allowed name p.prim in
+              collect seen definitions (symbols @ [name, Primitive p.prim]) rest
         | Global.Ind _ -> collect seen definitions (symbols @ [name, Erased_global]) rest
         | Global.Axiom _ -> Error (Cerror.Cerr_open_term (Cerror.diagnostic name "runtime axiom"))
   in collect [] [] [] [root]

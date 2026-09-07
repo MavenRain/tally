@@ -42,6 +42,7 @@ type kont = {
   kont_captures : int;
   kont_capture_slots : slot list;
   kont_result : slot;
+  kont_frame_slots : int;
   kont_body : block;
 }
 type program = {
@@ -70,7 +71,8 @@ let append_code codes ~name ~kind ~parameters ~capture_slots ~body =
 let append_kont konts ~capture_slots ~result ~body =
   let kont_id = Kont_tag (List.length konts) in
   let kont = { kont_id; kont_captures = List.length capture_slots;
-    kont_capture_slots = capture_slots; kont_result = result; kont_body = body } in
+    kont_capture_slots = capture_slots; kont_result = result;
+    kont_frame_slots = 0; kont_body = body } in
   kont_id, konts @ [kont]
 let code_of_tag p (Code_tag i) =
   if i < 0 then None else

@@ -32,7 +32,7 @@ let program (p : Cterm.program) =
     Slots.fold (fun s n -> max n (Cterm.slot_index s)) set (-1) in
   let counter = ref (-1) in
   let fresh () =
-    if !counter = max_int then Error (Cerror.Cerr_arena_over (Cerror.diagnostic "trampoline" "continuation local overflow")) else
+    if !counter = max_int then Error (Cerror.Cerr_slot_overflow (Cerror.diagnostic "trampoline" "continuation local overflow")) else
     (incr counter; Cterm.slot !counter |> Option.to_result ~none:(Cerror.Cerr_open_term (Cerror.diagnostic "trampoline" "negative local"))) in
   let tail_target tag (target : Cterm.code) =
     if target.arity = 1 then Ok tag else
@@ -97,9 +97,12 @@ let program (p : Cterm.program) =
   in
   let rec compile index done_ =
     let next = List.to_seq !sources |> Seq.drop index |> Seq.uncons in
-    Option.fold ~none:(Ok (List.rev done_)) ~some:(fun ((c : Cterm.code), _) ->
-      counter := max_slot c;
-      let* body = block c.body in
-      compile (index + 1) ({ c with body } :: done_)) next in
+    (* The none branch is a thunk: an eager argument would rebuild the
+       accumulator on every code, and only the last visit reads it. *)
+    Option.fold ~none:(fun () -> Ok (List.rev done_))
+      ~some:(fun ((c : Cterm.code), _) () ->
+        counter := max_slot c;
+        let* body = block c.body in
+        compile (index + 1) ({ c with body } :: done_)) next () in
   let* codes = compile 0 [] in
   Ok { p with codes = Array.of_list codes; konts = Array.of_list !konts }

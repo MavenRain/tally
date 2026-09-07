@@ -10,6 +10,9 @@ type t =
   | Cerr_effect_prim of diagnostic
   | Cerr_unary_numeral of diagnostic
   | Cerr_arena_over of diagnostic
+  | Cerr_slot_overflow of diagnostic
+  | Cerr_host_capacity of diagnostic
+  | Cerr_usage of diagnostic
   | Cerr_dense_tags of diagnostic
   | Cerr_unknown_global of diagnostic
   | Cerr_arity of diagnostic
@@ -31,6 +34,9 @@ let render error =
     | Cerr_effect_prim d -> "Cerr_effect_prim", d
     | Cerr_unary_numeral d -> "Cerr_unary_numeral", d
     | Cerr_arena_over d -> "Cerr_arena_over", d
+    | Cerr_slot_overflow d -> "Cerr_slot_overflow", d
+    | Cerr_host_capacity d -> "Cerr_host_capacity", d
+    | Cerr_usage d -> "Cerr_usage", d
     | Cerr_dense_tags d -> "Cerr_dense_tags", d
     | Cerr_unknown_global d -> "Cerr_unknown_global", d
     | Cerr_arity d -> "Cerr_arity", d

@@ -1,0 +1,3 @@
+(library
+ (name tally_emit)
+ (libraries tally_target tally_cterm tot.kernel))

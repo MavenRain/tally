@@ -1,4 +1,4 @@
-(?i:sbpf|\bsbf\b|opcode|\belf\b|relocat|linker)	lib/emit/|lib/target/|test/fixtures/|dev/gates-tally-m1\.sh
-Cterm|cterm|defunctionali	lib/cterm/|bin/tally\.ml|bin/dune|test/dune|test/cterm_ref\.ml|test/fixtures/cterm-|dev/gates-tally-m1\.sh
+(?i:sbpf|\bsbf\b|opcode|\belf\b|relocat|linker)	lib/emit/|lib/target/|test/fixtures/|dev/gates-tally-m1\.sh|bin/tally\.ml|test/(target_test|emitter_test|image_test)\.ml|dev/check-stage-c\.py
+Cterm|cterm|defunctionali	lib/cterm/|bin/tally\.ml|bin/dune|test/dune|test/cterm_ref\.ml|test/fixtures/cterm-|dev/gates-tally-m1\.sh|lib/emit/|test/(emitter_test|image_test)\.ml|dev/check-stage-c\.py
 (?i:account|\bcpi\b|\bpda\b|signer|lamport)	lib/emit/|lib/target/|test/fixtures/|dev/gates-tally-m1\.sh
 stack_height|(?i:stack.?depth|max.?depth)	lib/target/|lib/emit/|test/fixtures/|dev/gates-tally-m1\.sh

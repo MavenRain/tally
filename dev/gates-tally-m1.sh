@@ -7,6 +7,7 @@ set -e
 export LC_ALL=C LANG=C TZ=UTC
 export COLUMNS=80
 TALLY=/Users/oobi/Documents/tally
+LIBDIR=$TALLY/lib
 M1=/Users/oobi/Documents/tally-m1
 SRC=$M1/sources
 OUT=$M1/gate-out/m1
@@ -113,13 +114,13 @@ test -z "$(fd -HI -t f --changed-after "$STAMP" . /Users/oobi/Documents/tally-m0
 mark PASS-T1-M0-REPLAY
 
 # T1-2. PASS-T1-LEDGER
-ROWS='C1|C2|C3|C4|C5|C6|C7|C8|C9|C10|C11|C12|F-SPEC|F-EMIT|F-EMIT-SHIFT'
+ROWS='C1|C2|C3|C4|C5|C6|C7|C8|C9|C10|C11|C12|F-SPEC|F-EMIT|F-EMIT-SHIFT|S1|S2|S3|S4|S5|S6|S7|S15|S16|S17'
 lst=0
 zsh "$TALLY/dev/gates-m1-entry.sh" "$ROWS" > "$OUT/ledger.out" 2>&1 || lst=$?
 test "$lst" -eq 0
 rg -qx 'PASS-T1-CITATIONS' "$OUT/ledger.out"
 test "$(rg -c "^\| (F-SPEC|F-EMIT) \|.*\| VERIFIED[^|]*\|\$" "$TALLY/dev/CITATION-LEDGER.md")" -eq 2 || { mark 'OPEN-T1-LEDGER F-SPEC and F-EMIT carry no VERIFIED status cell on disk (10.4, RUL-O12)'; exit 1; }
-test "$(rg -c "^\| (${ROWS}) \|.*\| VERIFIED[^|]*\|\$" "$TALLY/dev/CITATION-LEDGER.md")" -eq 15
+test "$(rg -c "^\| (${ROWS}) \|.*\| VERIFIED[^|]*\|\$" "$TALLY/dev/CITATION-LEDGER.md")" -eq 25
 test "$(rg -c '^\| (C[0-9]+|F-[A-Z-]+|S[0-9]+) \|.*\| UNVERIFIED[^|]*\|$' "$TALLY/dev/CITATION-LEDGER.md")" -eq 3
 mark PASS-T1-LEDGER
 
@@ -165,7 +166,10 @@ dune build --root "$TALLY" --build-dir "$BD" bin/tally.exe
 test -x "$BD/default/bin/tally.exe"
 dune build --root "$TALLY" bin/tally.exe
 test -x "$TB"
-"$TB" --help > "$OUT/help.txt"
+hst=0
+"$TB" --help > "$OUT/help-stdout.txt" 2> "$OUT/help.txt" || hst=$?
+test "$hst" -eq 2       # D144: a usage request is a usage error, never a decision
+test ! -s "$OUT/help-stdout.txt"   # stdout carries only a rendered decision
 rg -q '\bcheck\b' "$OUT/help.txt"
 rg -q '\bbuild\b' "$OUT/help.txt"
 mark PASS-T1-BUILD
@@ -244,6 +248,11 @@ test "$(rg -c '^verify: ok ' "$OUT/cterm-verify.out")" -eq 10
 for fx in cterm-known-call cterm-selfrec cterm-mutual; do
   test "$(rg '^VERIFY-OK ' "$OUT/cterm-firstorder/$fx.txt" | rg -o 'callknown-edges=[0-9]+' | cut -d= -f2)" -ge 1
 done
+# D145: ANF copies the continuation into every match arm, so switch blocks
+# grow as 2^N-1 in the number of let-bound matches, with frame slots in step.
+# Both bounds are pinned on the ten positives, so any regrowth reds.
+test "$(rg -o 'switch-defaults=[0-9]+' "$OUT/cterm-verify.out" | cut -d= -f2 | sort -rn | head -1)" -le 4
+test "$(rg -o 'frame-slots=[0-9]+' "$OUT/cterm-verify.out" | cut -d= -f2 | sort -rn | head -1)" -le 42
 mark PASS-T1-CTERM-FIRSTORDER
 
 # T1-9. PASS-T1-CTERM-DIFF
@@ -289,16 +298,157 @@ done < <(rg -o '^cterm-[a-z-]+\.tot$' "$OUT/cterm-positives.txt")
 test "$p" -eq 10
 mark PASS-T1-CTERM-REJECTS
 
-# T1-11 placeholder, Stage C
-exit 9
-# T1-12 placeholder, Stage C
-exit 9
-# T1-13 placeholder, Stage C
-exit 9
-# T1-14 placeholder, Stage C
-exit 9
-# T1-15 placeholder, Stage C
-exit 9
+# T1-11. PASS-T1-RIG
+test -f "$M1/rig/Cargo.toml" || { mark 'OPEN-T1-RIG tally-m1/rig absent'; exit 1; }
+test -f "$M1/rig/Cargo.lock" || { mark 'OPEN-T1-RIG provisioning line 1 (cargo fetch) not run'; exit 1; }
+rg -q 'path = "\.\./sources/sbpf"' "$M1/rig/Cargo.toml"
+rg -q 'path = "\.\./sources/solana-sdk/program-entrypoint"' "$M1/rig/Cargo.toml"
+test "$(git -C "$SRC/sbpf" rev-parse HEAD)" = e7e515291244ecd1903b18fee08444676f767620
+test "$(git -C "$SRC/solana-sdk" rev-parse HEAD)" = 1c1d667f161666f12f5a43ebef8eda9470a8c6ee
+if rg -q '^litesvm' "$M1/rig/Cargo.toml"; then
+  rg -q '^name = "litesvm"' "$M1/rig/Cargo.lock" || { mark 'OPEN-T1-RIG provisioning line 3 (litesvm) not run, rig manifest names it'; exit 1; }
+fi
+bst=0
+cargo --offline build -j 2 --manifest-path "$M1/rig/Cargo.toml" > "$OUT/rig-build.log" 2>&1 || bst=$?
+if test "$bst" -ne 0; then
+  rg -q 'error\[E0599\].*(compute_budget|ComputeBudget|max_instruction_stack_depth)|no method named `(compute_budget|max_instruction_stack_depth)`' "$OUT/rig-build.log" && { mark 'OPEN-T1-LITESVM no compute-budget getter on the provisioned litesvm'; exit 1; }
+  exit "$bst"
+fi
+nst=0; rg -c 'Updating .* index|Downloading ' "$OUT/rig-build.log" || nst=$?
+test "$nst" -eq 1
+test -x "$LOADCHECK"
+"$LOADCHECK" --version > "$OUT/rig-version.txt"
+rg -q '^loadcheck 0\.' "$OUT/rig-version.txt"
+rg -qx 'RIG-DEP solana-sbpf 0\.11\.1' "$OUT/rig-version.txt"
+rg -qx 'RIG-DEP solana-program-entrypoint 2\.2\.1' "$OUT/rig-version.txt"
+test "$(rg -c '^RIG-DEP ' "$OUT/rig-version.txt")" -eq 2
+mark PASS-T1-RIG
+
+# T1-12. PASS-T1-PARAMS-LEDGER
+P=$TALLY/lib/target/target_params.ml
+test -s "$P"
+rg -o 'ledger: [A-Za-z0-9-]+' "$P" | cut -d' ' -f2 | sort -u > "$OUT/params-rows.txt"
+test -s "$OUT/params-rows.txt"
+m=0
+while IFS= read -r row; do
+  rg -q "^\| ${row} \|.*\| VERIFIED[^|]*\|\$" "$TALLY/dev/CITATION-LEDGER.md"
+  m=$(( m + 1 ))
+done < "$OUT/params-rows.txt"
+test "$m" -eq "$(wc -l < "$OUT/params-rows.txt")"
+st=0
+rg -n '[^_A-Za-z0-9][0-9]' "$P" > "$OUT/params-raw.txt" || st=$?
+test "$st" -le 1        # 0 hits or 1 no-match; a status of 2 is a bad regex or an unreadable file
+vst=0
+rg -v '\(\* ledger: ' "$OUT/params-raw.txt" > "$OUT/params-unmarked.txt" || vst=$?
+test "$vst" -le 1
+test ! -s "$OUT/params-unmarked.txt"
+test "$(rg -c '\(\* ledger: ' "$P")" -ge 1
+for module in region_map syscall_table; do
+  st=0
+  rg -n '[^_A-Za-z0-9][0-9]' "$TALLY/lib/target/$module.ml" > "$OUT/$module-literals.txt" || st=$?
+  test "$st" -eq 1
+done
+# D160. Entry fact 3 keeps every S18 and S20 constant out of Stage C source.
+# The marked-row loop above only checks that a MARKED row is VERIFIED, so it is
+# blind to a line marked with the WRONG row; this leg reads the constants that
+# only the undischarged convention could justify, whatever marker they carry.
+# The forms are the binding and the qualified use, so the prose that records
+# the absence of these constants is not itself a hit.
+sst=0
+rg -n 'ledger: S18|ledger: S20|\b(let|val)\s+(entry_input_register|syscall_argument_registers)\b|\.(entry_input_register|syscall_argument_registers)\b' \
+  "$LIBDIR" > "$OUT/params-s18.txt" || sst=$?
+test "$sst" -eq 1
+mark PASS-T1-PARAMS-LEDGER
+
+# T1-13. PASS-T1-EMIT
+test "$(rg -c "^\| S18 \|.*\| VERIFIED[^|]*\|\$" "$TALLY/dev/CITATION-LEDGER.md")" -eq 1 || { mark 'OPEN-T1-EMIT row S18 register convention UNVERIFIED, spine section 7 item 3'; exit 1; }
+test -x "$LOADCHECK" || { mark 'OPEN-T1-EMIT loader oracle absent, T1-11 not green'; exit 1; }
+n=0
+while IFS= read -r fx; do
+  fxe=$TALLY/test/fixtures/$fx.expected
+  test -s "$fxe"
+  rg -qx '[0-9]{1,20}' "$fxe"
+  exp="$(cat "$fxe")"
+  "$TB" build -o "$OUT/$fx.so" "$TALLY/test/fixtures/$fx.tot"
+  test -s "$OUT/$fx.so"
+  "$LOADCHECK" --run --expect "$exp" "$OUT/$fx.so" > "$OUT/emit-$fx.txt" 2>&1
+  rg -q '^loadcheck: strict-parse ok$' "$OUT/emit-$fx.txt"
+  rg -qx "loadcheck: return $exp" "$OUT/emit-$fx.txt"
+  n=$(( n + 1 ))
+done <<'FIX'
+smoke-log
+smoke-ret
+emit-div-zero
+emit-mod-zero
+emit-sdiv-min-neg1
+emit-srem-min-neg1
+emit-shift-width
+FIX
+test "$n" -eq 7
+# D159. While row S18 is UNVERIFIED the native fixture is a typed-rejection
+# leg, not a run leg: the build exits 2, names the row, and writes no image.
+# dev/check-stage-c.py carries the same contract for the same fixture.
+rst=0
+"$TB" build -o "$OUT/emit-frame-call.so" "$TALLY/test/fixtures/emit-frame-call.tot" \
+  > "$OUT/emit-frame-call-reject.txt" 2>&1 || rst=$?
+test "$rst" -eq 2
+rg -q '^Row_unverified S18: ' "$OUT/emit-frame-call-reject.txt"
+test ! -e "$OUT/emit-frame-call.so"
+xst=0
+"$LOADCHECK" --run --expect 1 "$OUT/smoke-ret.so" > "$OUT/emit-negctl.txt" 2>&1 || xst=$?
+test "$xst" -eq 1
+IMGCAP="$(rg -o -r '$1' '^let image_cap_bytes = ([0-9]+) ' "$TALLY/lib/target/target_params.ml")"
+printf '%s' "$IMGCAP" | rg -qx '[0-9]{1,20}'
+test "$(wc -c < "$OUT/smoke-log.so")" -le "$IMGCAP"
+"$LOADCHECK" --syscall-keys > "$OUT/oracle-keys.txt"
+"$TB" build --print-syscall-keys > "$OUT/tally-keys.txt"
+test "$(wc -l < "$OUT/oracle-keys.txt")" -eq 3
+test "$(wc -l < "$OUT/tally-keys.txt")" -eq 3
+diff "$OUT/oracle-keys.txt" "$OUT/tally-keys.txt"
+mark PASS-T1-EMIT
+
+# T1-14. PASS-T1-ARCH-V3
+"$LOADCHECK" --headers "$OUT/smoke-log.so" > "$OUT/hdr-ours.txt"
+"$LOADCHECK" --headers "$SRC/sbpf/tests/elfs/strict_header.so" > "$OUT/hdr-strict.txt"
+"$LOADCHECK" --headers "$SRC/sbpf/tests/elfs/syscall_static.so" > "$OUT/hdr-syscall.txt"
+test -s "$OUT/hdr-ours.txt"
+test -s "$OUT/hdr-strict.txt"
+test -s "$OUT/hdr-syscall.txt"
+rg -qx 'e_flags 3' "$OUT/hdr-ours.txt"
+rg -qx 'e_type 3' "$OUT/hdr-ours.txt"
+rg -qx 'e_machine 263' "$OUT/hdr-ours.txt"
+rg -qx 'e_phoff 64' "$OUT/hdr-ours.txt"
+test "$(rg -c '^ph ' "$OUT/hdr-ours.txt")" -eq 5
+for f in ours strict syscall; do
+  rg -o '^[a-z_]+' "$OUT/hdr-$f.txt" | sort -u > "$OUT/hdr-$f.fields"
+  test -s "$OUT/hdr-$f.fields"
+done
+diff "$OUT/hdr-ours.fields" "$OUT/hdr-strict.fields"
+diff "$OUT/hdr-ours.fields" "$OUT/hdr-syscall.fields"
+rg '^ph ' "$OUT/hdr-ours.txt" | cut -d' ' -f2,3,4 > "$OUT/ph-ours.txt"
+# Both pinned upstream fixtures append a sixth PT_NULL header. The required
+# five-header prefix remains positional, and the extra header is checked.
+for f in strict syscall; do
+  test "$(rg -c '^ph ' "$OUT/hdr-$f.txt")" -eq 6
+  test "$(rg '^ph ' "$OUT/hdr-$f.txt" | tail -1)" = 'ph 0 0 0'
+done
+rg '^ph ' "$OUT/hdr-strict.txt" | head -5 | cut -d' ' -f2,3,4 > "$OUT/ph-strict.txt"
+test -s "$OUT/ph-strict.txt"
+diff "$OUT/ph-ours.txt" "$OUT/ph-strict.txt"
+mark PASS-T1-ARCH-V3
+
+# T1-15. PASS-T1-SECOND-AUTHOR
+test -f "$SAPV" || { mark 'OPEN-T1-SECOND-AUTHOR provisioning line 2 (platform-tools, --arch v3) not run'; exit 1; }
+rg -q 'cargo-build-sbf .*--arch v3' "$SAPV"
+rg -q '^platform-tools ' "$SAPV"
+test -s "$SASO" || { mark 'OPEN-T1-SECOND-AUTHOR image absent, provisioning line 2 not run'; exit 1; }
+"$LOADCHECK" --headers "$SASO" > "$OUT/hdr-sa.txt"
+test -s "$OUT/hdr-sa.txt"
+rg -qx 'e_flags 3' "$OUT/hdr-sa.txt"
+rg -o '^[a-z_]+' "$OUT/hdr-sa.txt" | sort -u > "$OUT/hdr-sa.fields"
+diff "$OUT/hdr-sa.fields" "$OUT/hdr-ours.fields"
+mark PASS-T1-SECOND-AUTHOR
+
 # T1-16 placeholder, Stage D
 exit 9
 # T1-17 placeholder, Stage E

@@ -193,8 +193,10 @@ let program (p : Cterm.program) =
     let* () = require name (kont_index kont.kont_id = index) "continuation tags are not dense" in
     let* () = require name (kont.kont_captures >= 0 && kont.kont_captures = List.length kont.kont_capture_slots)
       "continuation capture count differs from its capture slots" in
-    let* scope = initial name None (kont.kont_result :: kont.kont_capture_slots) in
-    let* () = block p name None scope [] kont.kont_body in
+    let* () = require name (kont.kont_frame_slots >= 0) "continuation frame size is negative" in
+    let frame = Some kont.kont_frame_slots in
+    let* scope = initial name frame (kont.kont_result :: kont.kont_capture_slots) in
+    let* () = block p name frame scope [] kont.kont_body in
     Ok (index + 1)) (Ok 0) p.konts in
   Ok ()
 

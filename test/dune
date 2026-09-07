@@ -1,3 +1,19 @@
 (executable
  (name cterm_ref)
+ (modules cterm_ref)
  (libraries tally_cterm tot.kernel tot.interp tot.surface))
+
+(executable
+ (name target_test)
+ (modules target_test)
+ (libraries tally_target))
+
+(executable
+ (name emitter_test)
+ (modules emitter_test)
+ (libraries tally_emit tally_target tally_cterm tot.kernel tot.surface))
+
+(executable
+ (name image_test)
+ (modules image_test)
+ (libraries tally_emit tally_target))

@@ -1,0 +1,3 @@
+(library
+ (name tally_target)
+ (public_name tally.target))

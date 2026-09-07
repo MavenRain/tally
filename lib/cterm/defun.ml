@@ -14,6 +14,7 @@ let program (input : Clos.t) =
     | Clos.MkCon (c, args) -> Ok (Cterm.RMkCon (c, args))
     | Clos.Proj (a, f) -> Ok (Cterm.RProj (a, f))
     | Clos.Prim (p, args) -> Ok (Cterm.RPrim (p, args))
+    | Clos.Syscall (syscall, args) -> Ok (Cterm.RSyscall (syscall, args))
     | Clos.CallKnown (name, args) -> let* code = tag name in Ok (Cterm.RCallKnown (code, args))
     | Clos.Apply (f, a) -> Ok (Cterm.RApply (f, a))
   in

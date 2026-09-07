@@ -3,6 +3,7 @@ let ( let* ) = Result.bind
 type rhs = Atom of Cterm.atom | MkClo of string * Cterm.atom list
   | MkCon of Cterm.ctor * Cterm.atom list | Proj of Cterm.atom * Cterm.field
   | Prim of Prim.t * Cterm.atom list | CallKnown of string * Cterm.atom list
+  | Syscall of Cterm.Syscall.t * Cterm.atom list
   | Apply of Cterm.atom * Cterm.atom
 type block = { binds : (Cterm.slot * rhs) list; tail : tail }
 and tail = Return of Cterm.atom | Switch of Cterm.atom * (Cterm.ctor * block) list
@@ -42,7 +43,7 @@ let program (input : Anf.t) =
     Slots.fold (fun s n -> max n (Cterm.slot_index s)) all (-1) in
   let counter = ref (-1) in
   let fresh () =
-    if !counter = max_int then Error (Cerror.Cerr_arena_over (Cerror.diagnostic input.root "closure local overflow")) else
+    if !counter = max_int then Error (Cerror.Cerr_slot_overflow (Cerror.diagnostic input.root "closure local overflow")) else
     (incr counter; Cterm.slot !counter |> Option.to_result ~none:(Cerror.Cerr_open_term (Cerror.diagnostic input.root "negative local")))
   in
   let symbol name = List.assoc_opt name input.symbols |> Option.to_result
@@ -51,6 +52,7 @@ let program (input : Anf.t) =
     | Anf.Defined _ -> Ok (CallKnown (name, args))
     | Anf.Constructor _ -> Ok (MkCon (Cterm.ctor name, args))
     | Anf.Primitive p -> Ok (Prim (p, args))
+    | Anf.Intrinsic syscall -> Ok (Syscall (syscall, args))
     | Anf.Erased_global -> Error (Cerror.Cerr_apply_erased (Cerror.diagnostic name "erased global application"))
   in
   let ensure_wrapper name sym arity =
@@ -79,14 +81,15 @@ let program (input : Anf.t) =
     | Anf.Global name ->
         let* sym = symbol name in
         let arity = match sym with Anf.Defined n | Anf.Constructor n -> n
-          | Anf.Primitive p -> Prim.arity p | Anf.Erased_global -> 0 in
+          | Anf.Primitive p -> Prim.arity p | Anf.Intrinsic Cterm.Syscall.Sol_log -> 1
+          | Anf.Erased_global -> 0 in
         if arity > 0 then
           let* code = ensure_wrapper name sym arity in
           let* s = fresh () in Ok ([s, MkClo (code, [])], Cterm.ALocal s)
         else match sym with
           | Anf.Constructor _ -> Ok ([], Cterm.AGlobal (Cterm.ctor name))
           | Anf.Erased_global -> Ok ([], Cterm.AErased)
-          | Anf.Defined _ | Anf.Primitive _ -> let* rhs = saturated name sym [] in
+          | Anf.Defined _ | Anf.Primitive _ | Anf.Intrinsic _ -> let* rhs = saturated name sym [] in
               let* s = fresh () in Ok ([s, rhs], Cterm.ALocal s)
   and atoms xs = List.fold_left (fun acc a ->
     let* binds, done_ = acc in let* before, a = atom a in
@@ -103,7 +106,8 @@ let program (input : Anf.t) =
     | Anf.Global name ->
         let* sym = symbol name in
         let n = match sym with Anf.Defined n | Anf.Constructor n -> n
-          | Anf.Primitive p -> Prim.arity p | Anf.Erased_global -> 0 in
+          | Anf.Primitive p -> Prim.arity p | Anf.Intrinsic Cterm.Syscall.Sol_log -> 1
+          | Anf.Erased_global -> 0 in
         if List.length args >= n then
           let* binds, args = atoms args in
           let initial = List.filteri (fun i _ -> i < n) args in

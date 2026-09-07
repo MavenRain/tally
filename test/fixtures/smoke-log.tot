@@ -1,0 +1,2 @@
+-- solLog is the tally target logging intrinsic.
+def main : IO Unit := solLog "tally"

@@ -175,3 +175,24 @@ The succession strings and per-stage counts are normative in
 `tally-m1/M1-PLAN.md` section 10.6. Stage B reuses `A_ROWS`; later stages
 append their target rows. S18 stays out until the user's answer is
 ratified, and S19-S20 stay out until provisioning discharges them.
+
+## Stage C supplementary source checks (2026-09-07)
+
+The target module's additional arithmetic, memory and branch opcodes were
+read from the same pinned sbpf tree, `src/ebpf.rs:241-489`, and checked
+against `src/verifier.rs:269-427` (S6). S3's dynamic frame adjustment
+alignment is 64 bytes at `src/verifier.rs:323-324`, refining the older
+plan's eight-byte claim. ELF field layouts come from the pinned
+`src/elf_parser/types.rs:12-78` (S4, S5 and S16).
+
+The Murmur implementation called by pinned `src/ebpf.rs:654-657` is
+`hash32` 0.3.1. Its downloaded archive digest is
+`47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606`,
+matching the pinned sbpf lockfile and the rig lockfile. The algorithm's
+zero seed, tail, finalization and block mixing were read at
+`hash32-0.3.1/src/murmur3.rs:70-122,189-205` (S7). Twenty-four independent
+vectors and the pinned loader's three registry keys check the implementation.
+
+These checks extend the cited spans without discharging S18. The internal
+argument convention remains unavailable even if a caller changes its status
+text; implementing a ratified convention is separate work.

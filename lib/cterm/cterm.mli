@@ -42,6 +42,7 @@ type kont = {
   kont_captures : int;
   kont_capture_slots : slot list;
   kont_result : slot;
+  kont_frame_slots : int;
   kont_body : block;
 }
 type program = {

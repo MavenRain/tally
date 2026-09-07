@@ -206,3 +206,65 @@ assertion-script bytes. Raw evidence is in tally-m1/stage-b-validation.
 | B | T1-10 | accepted-io-negative: actual gate with command double delegating unaffected calls | exit 1; test "$st" -eq 2; pipeline-gate-mutations/accepted-io-negative/ | Restore baseline data or command-double mode; verify data and executed assertion-script bytes | exit 0; restored assertion passed |
 | B | T1-10 | all-positives-rejected: actual gate with command double delegating unaffected calls | exit 2; "$TB" build --emit-none "$TALLY/test/fixtures/$fx" > /dev/null 2>&1; pipeline-gate-mutations/all-positives-rejected/ | Restore baseline data or command-double mode; verify data and executed assertion-script bytes | exit 0; restored assertion passed |
 | B | T1-10 | empty-shared-positive-list: actual gate with command double delegating unaffected calls | exit 1; test "$p" -eq 10; pipeline-gate-mutations/empty-shared-positive-list/ | Restore baseline data or command-double mode; verify data and executed assertion-script bytes | exit 0; restored assertion passed |
+
+## M1 Stage B review round 1 (2026-09-07)
+
+Seven cycles for deviations D144 to D149. Unlike the eleven controls above,
+five of these are COMPILER SOURCE or FIXTURE SOURCE mutations, which
+M1-PLAN.md:1582-1584 asks for and the staged T1-8 rows lacked. Every
+mutation ran on a scratch copy of the tree at
+tally-m1/scratch/stage-b-review/mut/tree, never on the live tree; the
+pre-mutation bytes were saved under mut/base and restored from there, with
+`cmp` a mandatory leg (every restore cmp exit 0). The legs are the T1-5,
+T1-8 and T1-10 bodies copied verbatim from dev/gates-tally-m1.sh into
+tally-m1/scratch/stage-b-review/run/legs.sh and aimed at the scratch tree.
+Raw `zsh -x` traces, cmp files and exits are in
+tally-m1/stage-b-validation/review-r1-mutations/.
+
+| stage | gate | mutation | red (observed) | restore | green (observed) |
+|---|---|---|---|---|---|
+| B | T1-5 | help-clause-restored: compiler source, put the deleted `--help` clause back in bin/tally.ml and rebuild | exit 1; +run/legs.sh:19> test 0 -eq 2; review-r1-mutations/c1-help-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; LEG-GREEN t1-5; review-r1-mutations/c1-help-green.trace |
+| B | T1-8 | match-arm-regrowth: fixture source, rewrite cterm-match-kept.tot as three let-bound two-arm matches so ANF copies the continuation again | exit 1; +run/legs.sh:52> test 7 -le 4; review-r1-mutations/c2-regrowth-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; LEG-GREEN t1-8; review-r1-mutations/c2-regrowth-green.trace |
+| B | T1-8 | kont-frame-zero: compiler source, layout.ml stores `kont_frame_slots = 0` instead of the measured high-water | exit 2; Cerror.Cerr_verify <kont 0>: local slot exceeds the recorded frame, on cterm-nested-capture; review-r1-mutations/c3-kont-frame-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; LEG-GREEN t1-8; review-r1-mutations/c3-kont-frame-green.trace |
+| B | T1-8 | tramp-nontail-callknown, known-call read: compiler source, tramp.ml routes a non-tail RCallKnown through the trampoline as an adapter closure plus a continuation, so no direct known edge remains | exit 1; +run/legs.sh:50> test 0 -ge 1 on cterm-known-call; review-r1-mutations/c4-tramp-nontail-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; LEG-GREEN t1-8; review-r1-mutations/c4-tramp-nontail-green.trace |
+| B | T1-8 | tramp-nontail-callknown, selfrec read: the same mutation read on the second fixture the plan names | exit 1; +zsh:1> test 0 -ge 1 on cterm-selfrec; review-r1-mutations/c5-selfrec-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; assertion exit 0; review-r1-mutations/c5-selfrec-green.trace |
+| B | T1-8 | verify-zero-callknown-edges: compiler source, verify.ml reports `callknown_edges = min 0 callknown_edges` | exit 1; +run/legs.sh:50> test 0 -ge 1 on cterm-known-call; review-r1-mutations/c6-zero-edges-red.trace | Write the saved scratch-file bytes and verify with cmp | exit 0; LEG-GREEN t1-8; review-r1-mutations/c6-zero-edges-green.trace |
+| B | T1-10 | arena-limit-injection-dropped: gate body, drop the `--arena-limit 0` injection the staged T1-10 leg adds for cterm-arena-over.tot | exit 1; +run/legs.sh:64> test 0 -eq 2, the fixture is accepted without the limit; review-r1-mutations/c7-arena-limit-red.trace | Restore the injection and re-run the leg unchanged | exit 0; LEG-GREEN t1-10; review-r1-mutations/c7-arena-limit-green.trace |
+
+## Stage C leaf slice, artifact mutations (2026-09-07)
+
+These are independent loader runs from dev/check-stage-c.py, not full
+T1-13 runs: its S18 guard remains red. Image bytes are mutated, and each
+pristine image remains byte-identical and is rerun after the rejection.
+The native frame and remaining compiler-source mutations remain open.
+
+| stage | gate | mutation | red (observed) | restore | green (observed) |
+|---|---|---|---|---|---|
+| C leaf | independent loader | mutate emitted version byte | exit 1: ElfError::UnsupportedSBPFVersion | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted truncation | exit 1: ElfError::ValueOutOfBounds | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted program-header order | exit 1: ElfError::InvalidProgramHeader | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted RETURN opcode | exit 1: VerifierError(InvalidFunction(1)) | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted division zero guard | exit 1: strict parse succeeded, then DivideByZero | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted shift-width guard | exit 1: strict parse succeeded, return 1, expected 0 mismatch | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | independent loader | mutate emitted syscall key | exit 1: VerifierError(InvalidSyscall(0)) | keep mutant as evidence; rerun untouched pristine image, byte equality checked | strict parse and expected return, exit 0 |
+| C leaf | artifact output protection | source/image aliases, hardlink/symlink and manifest filename collision; output directory | five alias/collision cases reject at exit 2 with protected bytes unchanged; invalid output directory preserves old manifest | temporary fixture inputs only | seven source builds and their manifests succeed at exit 0 |
+
+## Stage C review round 1, gate mutations (2026-09-07)
+
+These are the compiler-source, gate-body and evidence-input cycles the staged
+slice left open, at minimum one per new entry T1-11 to T1-15. Every cycle ran
+on a scratch copy; the live tree was never mutated and its digests are printed
+before and after in the evidence. The plan pre-shapes these rows at
+M1-PLAN.md:2110-2138; deviation D161 records which of them ran and which stay
+open. Evidence: `tally-m1/stage-c-validation/review-r1-legs-and-mutations.log`,
+`review-r1-source-mutations.log`, `review-r1-s18-leg-mutation.log`.
+
+| stage | gate | mutation | red (observed) | restore | green (observed) |
+|---|---|---|---|---|---|
+| C r1 | PASS-T1-RIG | MU-R1-1: in a scratch copy of the captured `rig-version.txt`, strip the `RIG-DEP solana-program-entrypoint 2.2.1` line | leg exit 53, the red unit is `rg -qx 'RIG-DEP solana-program-entrypoint 2\.2\.1'` at gates-tally-m1.sh:322; no `PASS-T1-RIG` line | point the leg back at the pristine `loadcheck --version` capture | leg exit 0, `loadcheck 0.1.0` plus two `RIG-DEP` lines, count leg reads 2 |
+| C r1 | PASS-T1-PARAMS-LEDGER | MU-R1-2: append `let unmarked_probe = 7` to a scratch copy of `lib/target/region_map.ml` | leg exit 60, the red unit is `test "$st" -eq 1` at gates-tally-m1.sh:348 with `st` 0 and the hit `22:let unmarked_probe = 7`; no `PASS-T1-PARAMS-LEDGER` line | point the for-module loop back at the tree's `lib/target` | leg exit 0, both modules give `rg` status 1, no literal |
+| C r1 | PASS-T1-PARAMS-LEDGER (new S18-absence leg, D160) | MU-R1-3: append `let entry_input_register = 1 (* ledger: S2 *)` to a scratch copy of `lib/target/target_params.ml` and point `LIBDIR` at the scratch lib | leg exit 61, the red unit is `test "$sst" -eq 1` with `sst` 0 and the hit `:573:let entry_input_register = 1`; no `PASS-T1-PARAMS-LEDGER` line. The marked-row loop above stays green on the same file, which is the point: it cannot see a mismarked line | point `LIBDIR` back at the tree's `lib` | leg exit 0, `rg` status 1, no S18 or S20 constant in Stage C source |
+| C r1 | PASS-T1-EMIT | MU-R1-7: in a scratch TREE, set the RETURN opcode byte from `0x9d` to `0x95`. On disk that byte is `lib/target/target_params.ml:234`, `let op_return = 157`, not `lib/emit/encode.ml` as the plan row names | the scratch tree builds clean and emits a 904-byte `smoke-log.so`, then the first run leg reds: `loadcheck --run --expect 0` exits 1 with `VerifierError(InvalidFunction(11))`, zero `loadcheck: strict-parse ok` lines, no `PASS-T1-EMIT` | discard the scratch tree and run the live tree's own `smoke-log.so` | `loadcheck` exit 0, `loadcheck: strict-parse ok`, `loadcheck: return 0`, `loadcheck: instructions 12`; live `target_params.ml` digest unchanged at `20001e75026ba18fa798917719e1c768dca954d42e5249c517af9fa4b4c19b7e` |
+| C r1 | PASS-T1-EMIT (new rejection leg, D159) | MU-R1-6: in a scratch copy of the battery, point the typed-rejection leg at the LEAF fixture `smoke-ret` instead of `emit-frame-call` | leg exit 62, the red unit is `test "$rst" -eq 2` at gates-tally-m1.sh:379: the leaf fixture builds at exit 0 and writes an 832-byte image, so the rejection contract fails; no `PASS-T1-EMIT` line | point the leg back at `emit-frame-call` | leg exit 0: build exit 2, the `Row_unverified S18: native calls and argument passing require a ratified register convention` line, and no image on disk |
+| C r1 | PASS-T1-ARCH-V3 | MU-R1-4: in a scratch copy of the captured `hdr-strict.txt`, drop the sixth `ph 0 0 0` line so five program headers remain | leg exit 29, the red unit is `test "$(rg -c '^ph ' "$OUT/hdr-strict.txt")" -eq 6` at gates-tally-m1.sh:413 with the mutant at 5; no `PASS-T1-ARCH-V3` line | point the leg back at the pristine `loadcheck --headers` capture | leg exit 0 for the whole T1-14 body: `e_flags 3`, `e_type 3`, `e_machine 263`, `e_phoff 64`, five `ph` lines of ours, six of each pinned image with `ph 0 0 0` last, both field diffs silent, five-line positional prefix diff silent |
+| C r1 | PASS-T1-SECOND-AUTHOR | MU-R1-5: point `SASO` at an absent scratch path, leaving `second-author/out/second_author.so` untouched | leg exit 43 after printing `OPEN-T1-SECOND-AUTHOR image absent, provisioning line 2 not run`, the red unit is `test -s "$SASO"` at gates-tally-m1.sh:424; no `PASS-T1-SECOND-AUTHOR` line. The live image digest is unchanged at `34e3a0c99d91102a0560b0c48e3dbfdf1876a840796f20ffd6b41144b5b50f21` | point `SASO` back at the tree image | leg exit 0 for the whole T1-15 body: both provenance reads match, `e_flags 3`, and the field diff against `hdr-ours.fields` is silent |

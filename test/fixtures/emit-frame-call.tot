@@ -1,0 +1,17 @@
+-- This fixture remains blocked by the undischarged native convention S18.
+def callee : U64 -> U64 := fun x =>
+  let a : U64 := u64Add x 1u64 in
+  let b : U64 := u64Add x 2u64 in
+  let c : U64 := u64Add x 3u64 in
+  let d : U64 := u64Add x 4u64 in
+  let e : U64 := u64Add x 5u64 in
+  u64Add a (u64Add b (u64Add c (u64Add d e)))
+def main : U64 :=
+  let a : U64 := u64Add 1u64 1u64 in
+  let b : U64 := u64Add 2u64 1u64 in
+  let c : U64 := u64Add 3u64 1u64 in
+  let d : U64 := u64Add 4u64 1u64 in
+  let e : U64 := u64Add 6u64 1u64 in
+  let called : U64 := callee 9u64 in
+  let keep : U64 := u64Add called (u64Add a (u64Add b (u64Add c d))) in
+  e

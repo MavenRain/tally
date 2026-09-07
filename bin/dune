@@ -1,6 +1,6 @@
 (executable
  (name tally)
- (libraries tally_cterm tot.kernel tot.interp tot.surface))
+ (libraries tally_emit tally_target tally_cterm tot.kernel tot.interp tot.surface unix))
 
 (rule
  (target cterm_reference.ml)

@@ -1,0 +1,1 @@
+def main : U64 := u64Shl 1u64 64u32

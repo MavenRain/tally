@@ -10,6 +10,9 @@ type t =
   | Cerr_effect_prim of diagnostic
   | Cerr_unary_numeral of diagnostic
   | Cerr_arena_over of diagnostic
+  | Cerr_slot_overflow of diagnostic
+  | Cerr_host_capacity of diagnostic
+  | Cerr_usage of diagnostic
   | Cerr_dense_tags of diagnostic
   | Cerr_unknown_global of diagnostic
   | Cerr_arity of diagnostic

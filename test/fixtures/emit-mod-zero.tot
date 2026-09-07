@@ -1,0 +1,1 @@
+def main : U64 := u64Sub (u64Mod 7u64 0u64) 7u64

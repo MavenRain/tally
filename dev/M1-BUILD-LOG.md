@@ -286,6 +286,12 @@ from source-file mutations.
 | D140 | The Cterm sketch has no intermediate unknown-call binding. | Defun temporarily emits `RApply`; Tramp eliminates it, and both Verify and the reference machine reject any survivor. This represents non-tail unknown applications before continuation splitting without permitting them in a validated program. |
 | D141 | Decl.parse reads a block, but the source syntax and block extraction are unspecified. | Raw `entry-height` and `depth-bound` lines are recognized outside quoted strings and replaced by equal-length spaces. `Decl.source` returns the stripped source and parsed declarations; `Decl.parse` remains a standalone strict block reader. Fifteen parser controls include quote escapes and multiline data. |
 | D142 | Several mutation rows refer to older per-fixture driver files or a POS array absent from normative T1-9. | Eleven mutations change isolated scope/manifest source files. Eleven further controls replay the current exact assertions or use a driver double, with a supplemental EMatch membership check. They establish failure reachability and byte restoration, and are not described as compiler source mutations. |
+| D144 | Step 6 fixes usage at the literal exit 2, and `bin/tally.ml:33-34` states that usage is printed on stderr while stdout carries only a rendered decision. | Review round 1, finding L4-1: a top-level `--help` clause printed usage on stdout and returned 0. The clause is deleted, so every argv shape that is not `check` or `build` reaches the catch-all: usage on stderr, exit 2, empty stdout, observed `exit=2 stdout_bytes=0 stderr_bytes=270`. T1-5 now captures stderr, asserts `test "$hst" -eq 2` and `test ! -s "$OUT/help-stdout.txt"` before the two word checks, which still read `$OUT/help.txt`. Mutation `c1-help` puts the clause back and reds at `test 0 -eq 2` (`tally-m1/stage-b-validation/review-r1-mutations/`). |
+| D145 | The Cterm sketch expects one switch block per source match. | Review round 1, finding L2-1: `anf.ml:79` normalizes every arm with the SAME continuation and `anf.mli:4-5` has no join constructor, so switch blocks grow as `2^N-1` in the number of let-bound matches. Measured 1, 3, 7, 15, 255, 4095, 32767 for N of 1, 2, 3, 4, 8, 12, 15, with frame slots at `6*(2^N-1)` on that shape and wall clock under 0.01 s at N of 15 (`tally-m1/stage-b-validation/review-r1-anf-growth.md`). A join binder changes the Anf and Clos block types and the lowering, which Stage B does not own, so the size is PINNED instead: T1-8 asserts max `switch-defaults` at most 4 and max `frame-slots` at most 42, the measured maxima on the ten positives. Mutation `c2-regrowth` reds at `test 7 -le 4`. |
+| D146 | `Verify.program` bounds every local slot by the frame its code records. | Review round 1, finding L3-2: continuation bodies were verified with `frame = None`, so `verify.ml:23-24` skipped the bound for every continuation. `kont_frame_slots` joins the kont record, `layout.ml` measures it exactly as codes get theirs, from `kont_result :: kont_capture_slots` joined with the body high-water, and `verify.ml` passes it plus a nonnegative check. Six assertions in `tally-m1/stage-b-validation/review-r1-kont-frame-selftest.ml` and its `.txt` output pass, including the mirrored `undersized continuation frame`. Mutation `c3-kont-frame` stores 0 and reds with `Cerror.Cerr_verify <kont 0>: local slot exceeds the recorded frame`. |
+| D147 | One `Cerror.t` constructor per rejection (`design-cterm.md:414-416`), with `Cerr_arena_over` exactly the computed footprint above the parameter D2 supplies (`design-cterm.md:431`). | Review round 1, finding L2-3: seven sites raised `Cerr_arena_over` and six were not the footprint. `Cerr_slot_overflow` now carries the slot counters in `anf.ml`, `clos.ml` and `tramp.ml` plus the layout addition overflow, `Cerr_host_capacity` carries the read-only blob capacity and `Cerr_usage` carries a negative caller limit; `layout.ml` no longer hard-codes one constructor in its shared helper. None of the three is reachable from the 14 fixtures, which is the unreached-constructor deviation the rules at `M1-PLAN.md:1606-1609` require a row for. T1-10 still reads four distinct tokens, `Cerr_arena_over`, `Cerr_host_io`, `Cerr_host_string` and `Cerr_unary_numeral` (`tally-m1/stage-b-validation/review-r1-live-legs.log`). |
+| D148 | `--verify` runs `Verify.program` explicitly (`M1-PLAN.md:1310`). | Review round 1, finding L3-1: both `--verify` and `--dump-cterm` called `Verify.summary` alone, the counter that `verify.mli:8-9` warns is not a verified fact, and the printed line was true only because `pipeline` verifies on every build. Both branches now bind `middle (Verify.program program)` before they print, so the T1-8 assertion cannot become vacuous if pipeline verification ever turns conditional. The printed bytes are unchanged and T1-8 stays green. |
+| D149 | Any change to a committed gate body is a deviation with its own row AND a fresh mutation row, and `M1-PLAN.md:1582-1584` lists three compiler-source mutations for T1-8. | Review round 1, finding L5-1: the staged T1-8 rows were assertion replays and the staged T1-10 `--arena-limit` injection had no mutation row at all. All four now run on a scratch copy of the tree: `Tramp` routing a non-tail `RCallKnown` through the trampoline, read on `cterm-known-call` and again on `cterm-selfrec`, `Verify` printing `callknown-edges` as a constant zero, and the T1-10 leg with the injection removed. Every red is quoted in `dev/MUTATION-LOG.md` and traced in `tally-m1/stage-b-validation/review-r1-mutations/`. D142 is unchanged and still describes the original eleven controls. |
 | D143 | Stage B entry expects a complete new live M0 green. | The first pre-change run failed inherited DIV-MEMO timing at exit 0 and 24 seconds. The retry passed the functional word tower but failed JITTER-NOISY; its ratio was 1.079, below the unchanged 2.0 ceiling. Preserve both runs and their raw artifacts. No timing threshold, watchdog, sample count or frozen source was modified. |
 
 ### Handoff
@@ -297,3 +303,198 @@ This is the first compiler stage for which live M0 entries 15 and 16 are
 expected red: Cterm names violate the retired word fence and library sources
 violate the former zero-source count. Both reds were observed separately.
 T1-1 is the frozen M0 fence from this stage onward. No commit is created here.
+
+## Stage B review round 1 (2026-09-07)
+
+Seven kept findings, all repaired in place. Build and test after every OCaml
+edit: `dune build` exit 0, `zsh dev/test-tally.sh` exit 0 (with
+TOT_PRELUDE=vendor/tot/stdlib/prelude.tot, as the gate exports). The three
+legs that changed run green on the live tree:
+`tally-m1/stage-b-validation/review-r1-live-legs.log`. New deviations D144
+to D149 and seven mutation cycles are recorded above and in
+dev/MUTATION-LOG.md.
+
+- L2-1, ANF copies the continuation into every match arm. `anf.ml:79` hands
+  the same `k` to each arm and `Switch` is terminal in `anf.mli`, so switch
+  blocks are `2^N-1` in the number of let-bound matches (measured 1, 3, 7,
+  15, 255, 4095, 32767). Repair: a join binder is a Cterm type change Stage
+  B does not own, so T1-8 now PINS the size, max `switch-defaults` at most 4
+  and max `frame-slots` at most 42, the measured maxima on the ten
+  positives. D145, mutation `match-arm-regrowth`, evidence
+  `review-r1-anf-growth.md`.
+- L5-1, the T1-8 mutation record was assertion replays only and the T1-10
+  `--arena-limit` injection had no row. Repair: the three compiler-source
+  mutations of `M1-PLAN.md:1582-1584` plus the missing arena-limit row now
+  run on a scratch copy, four rows in dev/MUTATION-LOG.md. D149.
+- L4-1, an undocumented `--help` clause printed usage on stdout and exited
+  0, against the exit 2 usage rule. Repair: the clause is deleted; T1-5 now
+  asserts exit 2 and empty stdout before its two word checks. D144,
+  mutation `help-clause-restored`.
+- L3-2, continuations were verified with `frame = None`, so no continuation
+  body was bounded. Repair: `kont_frame_slots` joins the kont record,
+  `layout.ml` measures it and `verify.ml` enforces it, plus a nonnegative
+  check. D146, mutation `kont-frame-zero`, evidence
+  `review-r1-kont-frame-selftest.ml` and `.txt`, six checks, zero failures.
+- L2-3, `Cerr_arena_over` carried six causes that are not the arena
+  footprint. Repair: `Cerr_slot_overflow`, `Cerr_host_capacity` and
+  `Cerr_usage` join `Cerror.t` and take those sites, and `layout.ml` stops
+  hard-coding one constructor in its shared helper. T1-10 still reads four
+  distinct tokens. D147.
+- L3-1, `--verify` and `--dump-cterm` printed a `Verify.summary` count
+  without calling `Verify.program`, so the gate assertion was true only by
+  way of `pipeline`. Repair: both branches bind `Verify.program` before they
+  print. Output bytes unchanged. D148.
+- L2-4, eager `Option.fold ~none:` arguments at `tramp.ml:100` and
+  `decl.ml:15-17` built a value on every accepted input. Repair: both
+  `~none:` arguments are thunks applied at the end, with a comment naming
+  the cost. Behavior and messages unchanged, so no D-row.
+
+Repo state note: this review began against a worktree whose HEAD is
+`d339e81 M1 Stage B ...` with a clean tree and an empty index, not the
+45-path staged slice the review brief assumed. Every repair above is
+therefore an uncommitted worktree edit on top of the committed Stage B
+slice.
+
+## Stage C leaf emission and independent loader (2026-09-07)
+
+Stage B was committed at `d339e81` before this work began. Concurrent
+Stage B review fixes were merged from the live checkout, including the
+continuation-frame bound, explicit reporting-time verification, typed
+resource errors, lazy fallback evaluation, help contract, and growth checks.
+Their source and evidence entries are preserved above.
+
+The Stage C entry gate accepted this 25-row selection:
+
+```
+C_ROWS='C1|C2|C3|C4|C5|C6|C7|C8|C9|C10|C11|C12|F-SPEC|F-EMIT|F-EMIT-SHIFT|S1|S2|S3|S4|S5|S6|S7|S15|S16|S17'
+```
+
+Implemented: the target library and citation parser, byte encoder, label
+linker, ELF writer and symbols, manifest, leaf register allocation,
+frame/arena/callgraph checks, guarded arithmetic, static-string logging,
+CLI output, loader rig, second-author source and provisioned image.
+`frame_reserve` is zero and each build prints it. The loader's actual V3
+alignment requires 64-byte frame adjustments. No C1 depth constant was
+introduced. S18, S19 and S20 remain UNVERIFIED.
+
+This is an incomplete Stage C slice. Native calls, closures and continuation
+execution reject with `Row_unverified S18` before instruction selection.
+Constructor payload allocation/projection and dynamic string construction
+also remain unsupported. Nullary constructors, switches, word arithmetic,
+static string aliases, and leaf spills are supported. `--emit-none` retains
+the Stage B pipeline; the emission path seeds its own logging and signed
+division/remainder names. The signed emitter follows the Stage C semantics,
+not the older unsigned interpretation of sign tags in the M0 word evaluator.
+
+### Validation
+
+The merged tree builds with zero errors and warnings. The reproducible
+`dev/check-stage-c.py` run records 103 distinct emitted machine images,
+seven source fixtures, 145 commands with their expected statuses, and 177
+passing assertions. It also reruns the ten Stage B differential fixtures.
+The image corpus covers all word widths, signed edges, masking, comparison
+switches, full-width literals and register spill pressure. The exact S17
+sixteen-byte floor is checked before being loaded independently.
+
+The target tests reject missing or unverified required rows, malformed and
+duplicate ledger rows, unknown targets and a forged S18 status. They check
+24 independent Murmur vectors. All 100 opcode entries were compared against
+the pinned source. Review found and fixed a missing C5 requirement and
+output paths that could alias a source or ledger. Both image and manifest
+destinations now undergo identity checks before temporary files are written.
+
+The rig's six tests pass. The second-author program builds with
+`cargo-build-sbf 2.3.13`, platform-tools v1.48, and `--arch v3`; the strict
+loader runs its 1096-byte image and returns zero. A mismatched expectation
+returns exit one. Its image SHA256 is
+`34e3a0c99d91102a0560b0c48e3dbfdf1876a840796f20ffd6b41144b5b50f21`.
+
+The scoped T1-2 through T1-12 run passes all eleven entries, then T1-13
+returns exit one with OPEN-T1-EMIT for S18. The T1-14 and T1-15 leg bodies
+were rerun by hand at review round 1 against image bytes rebuilt by
+`_build/default/bin/tally.exe build -o smoke-log.so test/fixtures/smoke-log.tot`
+and read by `rig/target/debug/loadcheck --headers`, which produced the
+`hdr-ours.txt`, `hdr-strict.txt`, `hdr-syscall.txt` and `hdr-sa.txt` captures.
+Both bodies exit zero. Those captures, the `provenance.txt` reads and the
+loadcheck digest are in
+`tally-m1/stage-c-validation/review-r1-legs-and-mutations.log`, whose working
+copies stay under `tally-m1/scratch/stage-c-review/fix2/legs/`. Neither entry
+is reachable in a full battery while row S18 is UNVERIFIED: the script is
+`set -e` and T1-13 exits at OPEN-T1-EMIT before them, so this is a scoped
+rerun of the leg bodies and not a battery pass. It does not bypass the
+full battery's fail-fast behavior or open Stage D.
+
+The final clean-source full retry stopped at T1-1 with
+FAIL-T0-SPEED-INVALID and JITTER-NOISY. Its measured ratio was 0.955,
+inside the unchanged performance ceiling, but the sample-validity check
+failed. The preceding clean-source retry had the same validity failure.
+There is no claim of a complete green full battery.
+
+Retained unsuccessful observations: the first full replay obtained all
+twenty M0 markers but failed its source-mtime fence because this build
+session was still editing the workspace; the next full replay failed
+FAIL-T0-SPEED-INVALID. Neither frozen source nor timing thresholds changed.
+The first second-author attempt used an unsuitable host runtime and failed
+with InvalidSyscall; its failed log is retained beside the corrected run.
+
+### Cost report
+
+The cited report inputs are C9's 200000 default and S15's base 100,
+invocation 1000, and bytes-per-unit 250. Logging the five-byte message
+`tally` has a cited syscall charge of max(100, 5), or 100. The rig's
+observed instruction counts are separate interpreter observations, not a
+compute-unit certificate or an end-to-end cost bound.
+
+### Deviations
+
+| D-id | The plan claim | What was found or done, with evidence |
+|---|---|---|
+| D150 | The complete Stage C closes all native and closure paths. | Deliver the independently validated leaf slice while S18 stays unratified. Native-call and closure/continuation emission remains a typed rejection; payload constructors and dynamic strings are explicitly unsupported. No Stage D entry is claimed. |
+| D151 | The target constructor unconditionally needs the S18 convention. | The plan also permits leaf emission without S18. The abstract leaf parameter token checks every consumed row, including C5. Review round 1 replaced the hard-coded rejection this row first recorded: `require_calling_convention` now reads the ledger's own S18 cell, which OQ-3 makes the single discharge point, so the capability is closed exactly while that cell is not positively VERIFIED and the plan's discharge edit reaches the compiler instead of changing nothing. `Citation_ledger.verified` still owns which status tokens count, so a refuted or unresolved cell keeps it closed, and `test/target_test.ml` pins both directions. |
+| D152 | The Stage B front end already exposes solLog and signed division names. | Emission seeds solLog through the checked String -> IO Unit primitive carrier and lowers that named primitive to RSyscall. It seeds signed division/remainder with the existing kernel primitive tags. Ordinary host printLine stays rejected. Check and --emit-none keep their existing state path; no vendored source changes. |
+| D153 | Every V3 frame adjustment is eight-byte aligned. | Pinned verifier.rs:323-324 requires 64-byte alignment. Frame rounds to that requirement, and every emitted prologue/epilogue uses the computed size. frame_reserve is zero. Structural checks independently cover byte, count and arena limits. |
+| D154 | Stage C needs only its older enumerated parameter lines. | ELF format fields, 100 opcode values and Murmur mix parameters also live in target_params.ml with ledger markers. Required rows reject stale status, and region_map/syscall_table have no numeric literals. The existing one-path deny allowlist is unchanged. |
+| D155 | Fixed headers and dynsym alone suffice; reference images have five headers. | The pinned strict loader with symbol labels enabled requires section names and .dynstr. The writer supplies those sections. Both pinned images append a sixth null header, so T1-14 validates that extra header and compares the five required entries positionally. |
+| D156 | The normative short gates contain all Stage C prose obligations. | T1-11 additionally checks current dependency revisions and both compiled version lines; T1-12 additionally enforces the two zero-literal modules. Scope expansions list only the new backend and named CLI/test/harness paths. The live source manifest contains 46 library files. |
+| D157 | A plain second-author extern call and ordinary Rust runtime produce a suitable image. | The first image introduced unregistered abort and unresolved call behavior. The corrected no_std fixture imports the pinned SDK syscall definition by path and uses a documented non-returning panic edge. Its exact final binary loads and returns zero; the mismatch control rejects. |
+| D158 | External companions require no staging decision. | The user requested all changes staged. Source, locks, reproducible evidence and the second-author image/provenance are staged by explicit paths in the existing Documents index; the tally repository has its own staged changes. Generated targets and deployment keypairs are excluded, and no unrelated parent paths are added. |
+| D159 | T1-13 runs eight `--expect` fixtures, `emit-frame-call` among them (M1-PLAN.md:4162-4196). | While row S18 is UNVERIFIED the native fixture cannot build: `lib/emit/select.ml:23-25` rejects any non-zero arity with `Row_unverified S18`, so under `set -e` the eighth iteration killed the loop and `PASS-T1-EMIT` could never print even after the S18 guard is discharged. The roster is now seven run fixtures plus an explicit typed-rejection leg for `emit-frame-call`, which requires exit 2, the `Row_unverified S18` line and no image. That is the contract `dev/check-stage-c.py:67-70` already held for the same fixture. Mutation MU-R1-6. |
+| D160 | `target_params.ml` may mark any constant with any ledger row, and T1-12 checks only that a MARKED row is VERIFIED. | `entry_input_register = 1` was marked S2 and `syscall_argument_registers` aggregated the five argument registers, but "r1 is the input pointer" and an ordered argument vector are S18 facts, and entry fact 3 keeps every S18 constant out of Stage C source. Both are deleted with their `.mli` declarations; neither had a caller. The five `syscall_arg_*` registers keep their S1 marker: row S18 itself records the syscall half as already pinned and S1's citation is the site that passes them, `sbpf@e7e51529 src/interpreter.rs:548-556`. `return_register` keeps S17, whose row text names `mov64 r0, 0` then `return`. T1-12 gains a leg that reads the constants themselves rather than their markers, so a MISMARKED line is no longer invisible to the entry. Mutation MU-R1-3. |
+| D161 | The Stage C mutation roster of M1-PLAN.md:2110-2138 is run in full. | The staged slice recorded artifact-level loader cycles only, and no row named a new gate marker. Review round 1 ran seven cycles on scratch copies, at least one per new entry: MU-R1-1 for T1-11, MU-R1-2 and MU-R1-3 for T1-12, MU-R1-6 and MU-R1-7 for T1-13, MU-R1-4 for T1-14 and MU-R1-5 for T1-15. MU-R1-7 is the plan's `RETURN 0x9d` to `0x95` row; on disk that byte is `lib/target/target_params.ml:234`, `let op_return = 157`, not `lib/emit/encode.ml`, so the scratch tree mutates the line where the constant lives. The plan's remaining pre-shaped rows, the two negative controls, the divisor branch, the frame prologue pair, the image cap pair and the two key rows, stay open. |
+| D162 | The stage-close narrative names an invocation for every claim it makes. | The sentence "T1-14 and T1-15 pass when run independently against those same image bytes" named no command, script or log, and the only recorded invocation, `dev/STAGE-C-STATUS.md:25`, runs `dev/check-stage-c.py`, whose body never reads a header or the second-author image. Round 1 reran both leg bodies by hand, exit zero for each, and the narrative now names the commands and the new evidence file `tally-m1/stage-c-validation/review-r1-legs-and-mutations.log`. It also records that under `set -e` neither entry is reachable in a full battery while T1-13 exits at OPEN-T1-EMIT. |
+| D163 | The Stage C driver writes only the artifacts its options name. | `build -o` and `build --ledger` consumed the next token unconditionally, so `build -o --ledger FILE` wrote an 832-byte image literally named `--ledger` in the repository root and exited zero. Both clauses now refuse a following flag and fall through to the driver's own "output and ledger options require a path" error, which the bare form already produced. The regression lives in `dev/check-stage-c.py` rather than `test/`, because the driver's flag parser is not library-exposed. In the same pass `lib/emit/select.ml` gained a reserved-tag injectivity check, so two constructor names of one reserved class reject instead of emitting two identical `JEQ_IMM` tests. It is defensive today: the prelude binds `true`, `false`, `unit`, `lt`, `eq` and `gt`, and the front end rejects a duplicate global, so no tally source can reach the collision. |
+
+### Handoff
+
+S18 requires the user's ratified internal calling convention under
+M1-PLAN.md section 10.1 and OQ-3. This work neither supplies that answer
+nor treats a source pin as its substitute. The native fixture is present
+and deliberately rejects. The full Stage C mutation roster and native
+frame-nesting proof remain incomplete. Stage D does not open.
+
+Evidence is in `tally-m1/stage-c-validation/`; its README distinguishes
+scoped successes, full battery observations, and remaining work. Every
+repository and companion change is staged explicitly. No commit is made.
+
+## Stage C review round 1 (2026-09-07)
+
+Round 1 reviewed the whole staged index at `d339e81`, which carries the M1
+Stage C leaf emission slice and the Stage B review round 1 fixes together. It
+kept seven findings. Each repair is in place below; nothing was deferred.
+
+| id | severity | finding | repair, in place |
+|---|---|---|---|
+| L5E-1 | HIGH | No mutation row exercised the five new gate entries T1-11 to T1-15. Every Stage C row was an artifact-level loader cycle, and `rg` for any new marker name across the 250-line `dev/MUTATION-LOG.md` returned nothing. | Ran seven scratch-copy cycles, at least one per new entry, and appended their six-column rows under "## Stage C review round 1, gate mutations (2026-09-07)" in `dev/MUTATION-LOG.md`. Evidence: `tally-m1/stage-c-validation/review-r1-legs-and-mutations.log`, `review-r1-source-mutations.log`, `review-r1-s18-leg-mutation.log`. Deviation D161 records which pre-shaped plan rows ran and which stay open. |
+| L1-2 | HIGH | The only evidence that T1-14 and T1-15 are non-vacuous was an unattributed sentence naming no invocation, and under `set -e` neither entry can run in a full battery while T1-13 exits at OPEN-T1-EMIT. | Reran both leg bodies by hand against freshly built image bytes, exit zero for each, and rewrote the sentence to name the commands, the four `hdr-*.txt` captures and the new evidence file. The unreachability under `set -e` is now stated in the narrative and in `dev/STAGE-C-STATUS.md`. Deviation D162. |
+| L2-1 | HIGH | T1-13 demanded that `emit-frame-call` build and return 7, but the build exits 2 with `Row_unverified S18`, and `dev/check-stage-c.py` encoded the opposite contract for the same fixture. Under `set -e` the loop could never reach `PASS-T1-EMIT`. | `dev/gates-tally-m1.sh` now runs seven `--expect` fixtures, `test "$n" -eq 7`, plus an explicit typed-rejection leg for `emit-frame-call` requiring exit 2, the `Row_unverified S18` line and no image. Deviation D159, mutation MU-R1-6. |
+| L3-1 | HIGH | Row S18's argument-register convention was written into `target_params.ml` under the S1 and S2 markers, whose ledger rows carry no register fact, and T1-12 was structurally blind to a mismarked line. | Deleted `entry_input_register` and `syscall_argument_registers` with their `.mli` declarations; neither had a caller. Kept `syscall_arg_first` to `syscall_arg_fifth` marked S1, which row S18 itself records as the already pinned syscall half, and kept `return_register` marked S17. Added a T1-12 leg that reads the constants rather than their markers. Deviation D160, mutation MU-R1-3. |
+| L4-A | HIGH | `build -o` and `build --ledger` swallowed the next token unconditionally, so `build -o --ledger FILE` wrote an 832-byte image literally named `--ledger` in the repository root and exited zero. | Both clauses now refuse a following flag and fall through to the driver's own "output and ledger options require a path" error. Regression added to `dev/check-stage-c.py`, since the flag parser is not library-exposed. Deviation D163. |
+| L2-2 | MED | Constructor tags were minted from hard-coded source names that are not injective, so two constructors of one type could collide on one reserved tag and silently miscompile a switch. | `lib/emit/select.ml` records the reserved-class names it mints and rejects the program with `Unsupported_term "constructor name collides with a reserved tag: ..."`. Defensive today: the prelude binds `true`, `false`, `unit`, `lt`, `eq` and `gt`, and the front end rejects a duplicate global, so no tally source reaches it. Stage D hand-off: carry a numeric tag on `Cterm.ctor` at `lib/cterm/cterm.mli:6` and retire the name table. |
+| L3-3 | MED | `require_calling_convention` discarded its ledger and hard-coded `Error (Row_unverified "S18")`, so the plan's S18 discharge edit would have changed nothing in the compiler. | It now reads `Citation_ledger.verified ledger "S18"`. `test/target_test.ml` pins both directions: a positively VERIFIED S18 cell is the only discharge, and `UNVERIFIED` or `VERIFIED-REFUTED` keep it closed. `target_params.mli` is unchanged. Deviation D151 amended. |
+
+Build and tests after the repairs, run in the fixer's own window:
+`dunecho build -- --root /Users/oobi/Documents/tally` exit 0, "OK build: 0
+errors, 0 warnings"; `target_test.exe` exit 0; `image_test.exe` exit 0, 16
+PASS lines; `emitter_test.exe` exit 0, 102 CASE lines; `cterm_ref.exe` exit 0,
+10 interp and 10 pipeline lines. Row S18 is still UNVERIFIED, the full battery
+still stops at T1-13 with OPEN-T1-EMIT, and Stage D does not open.

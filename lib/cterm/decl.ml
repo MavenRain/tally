@@ -12,9 +12,12 @@ let error line detail =
 let natural line text =
   if String.length text = 0 || not (String.for_all (fun c -> c >= '0' && c <= '9') text)
   then error line ("expected a decimal natural number: " ^ text)
-  else int_of_string_opt text |> Option.fold
-    ~none:(error line ("natural number exceeds host representation: " ^ text))
-    ~some:(fun n -> if n >= 0 then Ok n else error line "negative natural number")
+  (* Both branches are thunks: an eager none argument builds a rejection
+     value and its message bytes for every accepted number. *)
+  else Option.fold
+    ~none:(fun () -> error line ("natural number exceeds host representation: " ^ text))
+    ~some:(fun n () -> if n >= 0 then Ok n else error line "negative natural number")
+    (int_of_string_opt text) ()
 
 let identifier text =
   let initial c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c = '_' in

@@ -1,11 +1,18 @@
 open Cterm
 
 let ( let* ) = Result.bind
-let error name detail = Error (Cerror.Cerr_arena_over (Cerror.diagnostic name detail))
+(* One constructor per rejection: the arena token names the measured
+   footprint alone, so a slot counter, a host capacity and a caller
+   argument each carry their own name. *)
+let reject make name detail = Error (make (Cerror.diagnostic name detail))
+let overflow name detail = reject (fun d -> Cerror.Cerr_slot_overflow d) name detail
+let capacity name detail = reject (fun d -> Cerror.Cerr_host_capacity d) name detail
+let usage name detail = reject (fun d -> Cerror.Cerr_usage d) name detail
+let arena name detail = reject (fun d -> Cerror.Cerr_arena_over d) name detail
 
 let add name left right =
   if left < 0 || right < 0 || left > max_int - right then
-    error name "layout size does not fit an OCaml integer"
+    overflow name "layout size does not fit an OCaml integer"
   else Ok (left + right)
 
 type measure = { high : int; words : int; literals : string list }
@@ -75,14 +82,14 @@ let string_layout literals =
     else
       let length = String.length text in
       let* next = add "<program>" offset length in
-      if next > Sys.max_string_length then error "<program>" "read-only strings exceed the host string capacity"
+      if next > Sys.max_string_length then capacity "<program>" "read-only strings exceed the host string capacity"
       else Ok (Strings.add text seen, next, (text, offset, length) :: entries, text :: pieces))
     (Ok (Strings.empty, 0, [], [])) literals in
   Ok (String.concat "" (List.rev pieces), List.rev entries)
 
 let program ?arena_limit p =
   let* () = Option.fold ~none:(Ok ()) ~some:(fun limit ->
-    if limit < 0 then error "<program>" "arena limit must be nonnegative" else Ok ()) arena_limit in
+    if limit < 0 then usage "<program>" "arena limit must be nonnegative" else Ok ()) arena_limit in
   let* codes, measured = Array.fold_left (fun result code ->
     let* codes, total = result in
     let* inputs = fold_measure code.name (local code.name)
@@ -94,15 +101,21 @@ let program ?arena_limit p =
   (* This is one visit to each code and continuation, with the largest
      branch at a switch. Dynamic trampoline iterations are not bounded
      by this static footprint. A continuation includes its previous link. *)
-  let* measured = Array.fold_left (fun result kont ->
-    let* total = result in
+  let* konts, measured = Array.fold_left (fun result kont ->
+    let* konts, total = result in
     let name = "<kont " ^ string_of_int (kont_index kont.kont_id) ^ ">" in
+    let* inputs = fold_measure name (local name)
+      (kont.kont_result :: kont.kont_capture_slots) in
     let* body = block name kont.kont_body in
-    join "<program>" total body) (Ok measured) p.konts in
+    let* own = join name inputs body in
+    let* total = join "<program>" total own in
+    Ok ({ kont with kont_frame_slots = own.high } :: konts, total))
+    (Ok ([], measured)) p.konts in
   let* () = Option.fold ~none:(Ok ()) ~some:(fun limit ->
     if measured.words > limit then
-      error "<program>" (Printf.sprintf "arena footprint %d words exceeds caller limit %d" measured.words limit)
+      arena "<program>" (Printf.sprintf "arena footprint %d words exceeds caller limit %d" measured.words limit)
     else Ok ()) arena_limit in
   let* rodata, strings = string_layout measured.literals in
   Ok { p with codes = Array.of_list (List.rev codes);
+       konts = Array.of_list (List.rev konts);
        arena_words = measured.words; rodata; strings }
